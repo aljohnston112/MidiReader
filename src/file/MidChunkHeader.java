@@ -50,9 +50,15 @@ public class MidChunkHeader extends MidChunk {
 			}
 			short ticksPerFrame = (short) (division & 0b0000000011111111);
 			ticksPer = ticksPerFrame*framesPerSecond;
+			System.out.print("Header has ");
+			System.out.print(ticksPer);
+			System.out.println(" ticks per second");
 		} else {
 			isSeconds = false;
 			ticksPer = division;
+			System.out.print("Header has ");
+			System.out.print(ticksPer);
+			System.out.println(" ticks per quarter note");
 		}
 	}
 	

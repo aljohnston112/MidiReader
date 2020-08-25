@@ -11,6 +11,7 @@ import java.util.Optional;
 import javax.activation.UnsupportedDataTypeException;
 
 import file.MidChunk.ChunkType;
+import file.MidChunkHeader.Format;
 
 public class MidReader {
 
@@ -51,8 +52,82 @@ public class MidReader {
 
 	private static void readMidFile(FileInputStream midFileStream) throws IOException {
 		MidChunk chunk = getChunk(midFileStream).orElse(null);
+		long length = chunk.getLength();
+		if(chunk instanceof MidChunkHeader) {
+			((MidChunkHeader) chunk).setFormat(getHeaderFormat(midFileStream));
+			length += 2;
+			((MidChunkHeader) chunk).setNTracks(getHeaderNTracks(midFileStream));
+			length += 2;
+			((MidChunkHeader) chunk).setDivision(getHeaderDivision(midFileStream));
+			length += 2;
+			if(length < chunk.getLength()) {
+				System.out.println("Skipping over the rest of the header");
+			}
+			while(length < chunk.getLength()) {
+				midFileStream.read();
+				length++;
+			}
+		} else if(chunk instanceof MidChunkTrack) {
+			
+		}
 	}
 	
+	private static int getHeaderDivision(FileInputStream midFileStream) throws IOException {
+		byte[] divisionBytes = new byte[2];
+		midFileStream.read(divisionBytes);
+		byte[] divisionBytesInt = new byte[4];
+		divisionBytesInt[0] = 0x00;
+		divisionBytesInt[1] = 0x00;
+		divisionBytesInt[2] = divisionBytes[0];
+		divisionBytesInt[3] = divisionBytes[1];
+		ByteBuffer bb = ByteBuffer.wrap(divisionBytesInt);		
+		return bb.getInt();
+		}
+
+	private static int getHeaderNTracks(FileInputStream midFileStream) throws IOException {
+		byte[] nTracksBytes = new byte[2];
+		midFileStream.read(nTracksBytes);
+		byte[] nTracksBytesInt = new byte[4];
+		nTracksBytesInt[0] = 0x00;
+		nTracksBytesInt[1] = 0x00;
+		nTracksBytesInt[2] = nTracksBytes[0];
+		nTracksBytesInt[3] = nTracksBytes[1];
+		ByteBuffer bb = ByteBuffer.wrap(nTracksBytesInt);
+		int nTracks = bb.getInt();
+		System.out.print("Header has ");
+		System.out.print(nTracks);
+		System.out.println(" tracks");
+		return nTracks;
+	}
+
+	private static Format getHeaderFormat(FileInputStream midFileStream) throws IOException {
+		byte[] sizeBytes = new byte[2];
+		midFileStream.read(sizeBytes);
+		byte[] sizeBytesInt = new byte[4];
+		sizeBytesInt[0] = 0x00;
+		sizeBytesInt[1] = 0x00;
+		sizeBytesInt[2] = sizeBytes[0];
+		sizeBytesInt[3] = sizeBytes[1];
+		ByteBuffer bb = ByteBuffer.wrap(sizeBytesInt);
+		int format = bb.getInt();
+		System.out.print("Header format has");
+		switch(format) {
+		case 0 : 
+			System.out.println(" a single track");
+			return Format.SINGLE;
+		case 1: 
+			System.out.println(" synched tracks");
+			return Format.SYNCHED;
+		case 2: 
+			System.out.println(" independent tracks");
+			return Format.INDEPENDENT;
+		default : 
+			System.out.println(" an unsupported format");
+			throw new UnsupportedDataTypeException(
+				"Mid file from the FileInputStream passed to getHeaderFormat has an invalid format");
+		}
+	}
+
 	public static long getVariableLengthQuantity(FileInputStream midFileStream) throws IOException {
 		ArrayList<Byte> tempBytes = new ArrayList<>();
 		byte tempByte = (byte) midFileStream.read();
