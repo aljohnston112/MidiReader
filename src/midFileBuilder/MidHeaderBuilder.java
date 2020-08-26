@@ -1,32 +1,43 @@
-package file;
+package midFileBuilder;
+
+import java.security.InvalidParameterException;
 
 import javax.activation.UnsupportedDataTypeException;
 
-public class MidChunkHeader extends MidChunk {
+import file.MidHeader;
 
-	enum Format {
-		SINGLE, SYNCHED, INDEPENDENT
+public class MidHeaderBuilder extends MidChunkBuilder {
+
+	/** The formats of a midi file
+	 *  
+	 */
+	public enum Format {
+		SINGLE, SYNCHED, INDEPENDENT, UNKNOWN
 	}
 	
-	private Format format;
-	
-	private int nTracks;
-	
-	private boolean isSeconds;
-	
+	// The format of the midi file
+	private Format format = Format.UNKNOWN;
+
+	// The number of tracks in the midi file
+	private int nTracks = -1;
+
+	// True when format is drop frame 
 	private boolean isDropFrame = false;
-	
+
+	// If true then midi is in ticksPerSeconds else ticksPerQuarterNote
+	private boolean isSeconds = false;
+
 	// If isSeconds then ticksPerSeconds else ticksPerQuarterNote
-	private int ticksPer;
+	private int ticksPer = -1;
 	
 	void setFormat(Format format){
 		this.format = format;
 	}
-	
+
 	void setNTracks(int nTracks){
 		this.nTracks = nTracks;
 	}
-	
+
 	void setDivision(int division) throws UnsupportedDataTypeException {
 		if((division & 0b1000000000000000) == 0b1000000000000000){
 			isSeconds = true;
@@ -62,4 +73,11 @@ public class MidChunkHeader extends MidChunk {
 		}
 	}
 	
+	public MidHeader build() {
+		if(length == -1 || format == Format.UNKNOWN || nTracks == -1 | ticksPer == -1) {
+			throw new InvalidParameterException();
+		}
+		return new MidHeader(format, nTracks, isDropFrame, isSeconds, ticksPer, length);
+	}
+
 }

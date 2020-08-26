@@ -8,4 +8,8 @@ public abstract class MidEvent {
 		this.ticksFromLastEvent = ticksFromLastEvent;
 	}
 	
+	public long getTicksFromLastEvent() {
+		return ticksFromLastEvent;
+	}
+	
 }

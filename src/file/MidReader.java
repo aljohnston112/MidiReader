@@ -13,7 +13,12 @@ import java.util.Optional;
 import javax.activation.UnsupportedDataTypeException;
 
 import file.MidChunk.ChunkType;
-import file.MidChunkHeader.Format;
+import midFileBuilder.MidChunkBuilder;
+import midFileBuilder.MidFileBuilder;
+import midFileBuilder.MidHeaderBuilder;
+import midFileBuilder.MidTrackBuilder;
+import midFileBuilder.MidHeaderBuilder.Format;
+import file.MidCs;
 import notes.MajorScale;
 import notes.MinorScale;
 import notes.Note;
@@ -24,7 +29,7 @@ import rhythm.TimeSignature;
 
 public class MidReader {
 
-	static List<MidChunkTrack> tracks = new ArrayList<>();
+	static List<MidTrack> tracks = new ArrayList<>();
 
 	static File midFile;
 
@@ -84,55 +89,166 @@ public class MidReader {
 	}
 
 	private static void readMidFile(BufferedInputStream midFileStream) throws IOException {
+		MidFileBuilder midBuilder = new MidFileBuilder();
 		while(midFileStream.available() > 0) {
-			MidChunk chunk = getChunk(midFileStream).orElse(null);
+			MidChunkBuilder chunkBuilder = getChunk(midFileStream).orElse(null);
 			long length = 0;
-			if(chunk instanceof MidChunkHeader) {
-				((MidChunkHeader) chunk).setFormat(getHeaderFormat(midFileStream));
+			if(chunkBuilder instanceof MidHeaderBuilder) {
+				((MidHeaderBuilder) chunkBuilder).setFormat(getHeaderFormat(midFileStream));
 				length += 2;
-				((MidChunkHeader) chunk).setNTracks(getHeaderNTracks(midFileStream));
+				((MidHeaderBuilder) chunkBuilder).setNTracks(getHeaderNTracks(midFileStream));
 				length += 2;
-				((MidChunkHeader) chunk).setDivision(getHeaderDivision(midFileStream));
+				((MidHeaderBuilder) chunkBuilder).setDivision(getHeaderDivision(midFileStream));
 				length += 2;
-				if(length < chunk.getLength()) {
+				if(length < chunkBuilder.getLength()) {
 					System.out.println("Skipping over the rest of the header");
 				}
-				while(length < chunk.getLength()) {
+				while(length < chunkBuilder.getLength()) {
 					midFileStream.read();
 					length++;
 				}
-			} else if(chunk instanceof MidChunkTrack) {
-				while(length < chunk.getLength()) {
+				midBuilder.setHeader(((MidHeaderBuilder) chunkBuilder).build());
+			} else if(chunkBuilder instanceof MidTrackBuilder) {
+				long runningTicks = 0;
+				while(length < chunkBuilder.getLength()) {
 					long ticks = getVariableLengthQuantity(midFileStream);
+					runningTicks+=ticks;
 					length += lengthToAdd;
 					System.out.print("Track's next event is ");
 					System.out.print(ticks);
 					System.out.println(" ticks from the last event");
 					MidEvent event = getEvent(midFileStream).orElse(null);
 					if(event != null) {
-						event.setTicksFromLastEvent(ticks);
+						event.setTicksFromLastEvent(runningTicks);
+						runningTicks = 0;
 					}
 					length += lengthToAdd;
 					if(event == null) {
 
 					} else if(event instanceof MidEndOfTrackEvent) {
-						while(length < chunk.getLength()) {
+						while(length < chunkBuilder.getLength()) {
 							midFileStream.read();
 							length++;
 						}
 					} else if(event instanceof MidNoteOnEvent || event instanceof MidNoteOffEvent) {
-						((MidChunkTrack) chunk).addEvent(ticks, event);
+						((MidTrack) chunkBuilder).addEvent(event);
 					}
 				}
-				tracks.add((MidChunkTrack)chunk);
+				tracks.add((MidTrack)chunkBuilder);
 			} else {
-				while(length < chunk.getLength()) {
+				while(length < chunkBuilder.getLength()) {
 					midFileStream.read();
 					length++;
 				}
 			}
 		}
 	}
+	
+	private static Format getHeaderFormat(BufferedInputStream midFileStream) throws IOException {
+		byte[] sizeBytes = new byte[2];
+		midFileStream.read(sizeBytes);
+		byte[] sizeBytesInt = new byte[4];
+		sizeBytesInt[0] = 0x00;
+		sizeBytesInt[1] = 0x00;
+		sizeBytesInt[2] = sizeBytes[0];
+		sizeBytesInt[3] = sizeBytes[1];
+		ByteBuffer bb = ByteBuffer.wrap(sizeBytesInt);
+		int format = bb.getInt();
+		System.out.print("Header format has");
+		switch(format) {
+		case 0 : 
+			System.out.println(" a single track");
+			return Format.SINGLE;
+		case 1: 
+			System.out.println(" synched tracks");
+			return Format.SYNCHED;
+		case 2: 
+			System.out.println(" independent tracks");
+			return Format.INDEPENDENT;
+		default : 
+			System.out.println(" an unknown format");
+			return Format.UNKNOWN;
+		}
+	}
+	
+	private static int getHeaderNTracks(BufferedInputStream midFileStream) throws IOException {
+		byte[] nTracksBytes = new byte[2];
+		midFileStream.read(nTracksBytes);
+		byte[] nTracksBytesInt = new byte[4];
+		nTracksBytesInt[0] = 0x00;
+		nTracksBytesInt[1] = 0x00;
+		nTracksBytesInt[2] = nTracksBytes[0];
+		nTracksBytesInt[3] = nTracksBytes[1];
+		ByteBuffer bb = ByteBuffer.wrap(nTracksBytesInt);
+		int nTracks = bb.getInt();
+		System.out.print("Header has ");
+		System.out.print(nTracks);
+		System.out.println(" tracks");
+		return nTracks;
+	}
+	
+	private static int getHeaderDivision(BufferedInputStream midFileStream) throws IOException {
+		byte[] divisionBytes = new byte[2];
+		midFileStream.read(divisionBytes);
+		byte[] divisionBytesInt = new byte[4];
+		divisionBytesInt[0] = 0x00;
+		divisionBytesInt[1] = 0x00;
+		divisionBytesInt[2] = divisionBytes[0];
+		divisionBytesInt[3] = divisionBytes[1];
+		ByteBuffer bb = ByteBuffer.wrap(divisionBytesInt);		
+		return bb.getInt();
+	}
+	
+	/**         Gets the next chunk from the BufferedInputStream containing the mid file.
+	 *  @param  midFileStream as the BufferedInputStream containing the mid file.
+	 *  @return The next chunk from the BufferedInputStream containing the mid file.
+	 *  @throws IOException if there is a I\O error while reading from the BufferedInputStream containing the mid file.
+	 */
+	private static Optional<MidChunkBuilder> getChunk(BufferedInputStream midFileStream) throws IOException {
+		MidChunkBuilder chunkBuilder = null;
+		// Get chunk type
+		byte[] chunkTypeBytes = new byte[4];
+		midFileStream.read(chunkTypeBytes);
+		ChunkType chunkType = getChunkType(chunkTypeBytes).orElse(null);
+		if(chunkType != null) {
+			if(chunkType == ChunkType.HEADER) {
+				chunkBuilder = new MidHeaderBuilder();
+				System.out.println("Chunk type is a header");
+			} else if(chunkType == ChunkType.TRACK) {
+				chunkBuilder = new MidTrackBuilder();
+				System.out.println("Chunk type is a track");
+			}
+		} else {
+			chunkBuilder = new MidChunkBuilder();
+		}
+		// Get chunk length
+		chunkBuilder.setLength(getChunkSize(midFileStream));
+		System.out.print("Chunk length is ");
+		System.out.print(chunkBuilder.getLength());
+		System.out.println(" bytes");
+		return Optional.of(chunkBuilder);
+	}
+	
+	/**        Gets the chunk type from the byte array.
+	 * @param  chunkTypeBytes as the byte array containing the chunk type.
+	 * @return The chunk type from the byte array.
+	 */
+	static Optional<ChunkType> getChunkType(byte[] chunkTypeBytes) {
+		if(chunkTypeBytes[0] == MidCs.MIDI_TYPE_HEADER[0] && 
+				chunkTypeBytes[1] == MidCs.MIDI_TYPE_HEADER[1] &&
+				chunkTypeBytes[2] == MidCs.MIDI_TYPE_HEADER[2] && 
+				chunkTypeBytes[3] == MidCs.MIDI_TYPE_HEADER[3]) {
+			return Optional.of(ChunkType.HEADER);
+		} else if(chunkTypeBytes[0] == MidCs.MIDI_TYPE_TRACK[0] && 
+				chunkTypeBytes[1] == MidCs.MIDI_TYPE_TRACK[1] &&
+				chunkTypeBytes[2] == MidCs.MIDI_TYPE_TRACK[2] && 
+				chunkTypeBytes[3] == MidCs.MIDI_TYPE_TRACK[3]) {
+			return Optional.of(ChunkType.TRACK);
+		} else {
+			return Optional.of(ChunkType.UNKNOWN);
+		}
+	}
+
 
 	private static Optional<MidEvent> getEvent(BufferedInputStream midFileStream) throws IOException {
 		lengthToAdd = 0;
@@ -156,9 +272,9 @@ public class MidReader {
 			int velocity = midFileStream.read();
 			System.out.print("Note ");
 			System.out.print(note.getName());
-			System.out.println(" was turned off");
+			System.out.print(" was turned off");
 			System.out.print(" with velocity ");
-			System.out.print(velocity);
+			System.out.println(velocity);
 			return Optional.of(new MidNoteOffEvent(note, velocity));
 		} else if(temp >= (byte)0x90 && temp <= (byte)0x99) {
 			int channel = temp & 0b00001111;
@@ -423,62 +539,6 @@ public class MidReader {
 		}
 	}
 
-	private static int getHeaderDivision(BufferedInputStream midFileStream) throws IOException {
-		byte[] divisionBytes = new byte[2];
-		midFileStream.read(divisionBytes);
-		byte[] divisionBytesInt = new byte[4];
-		divisionBytesInt[0] = 0x00;
-		divisionBytesInt[1] = 0x00;
-		divisionBytesInt[2] = divisionBytes[0];
-		divisionBytesInt[3] = divisionBytes[1];
-		ByteBuffer bb = ByteBuffer.wrap(divisionBytesInt);		
-		return bb.getInt();
-	}
-
-	private static int getHeaderNTracks(BufferedInputStream midFileStream) throws IOException {
-		byte[] nTracksBytes = new byte[2];
-		midFileStream.read(nTracksBytes);
-		byte[] nTracksBytesInt = new byte[4];
-		nTracksBytesInt[0] = 0x00;
-		nTracksBytesInt[1] = 0x00;
-		nTracksBytesInt[2] = nTracksBytes[0];
-		nTracksBytesInt[3] = nTracksBytes[1];
-		ByteBuffer bb = ByteBuffer.wrap(nTracksBytesInt);
-		int nTracks = bb.getInt();
-		System.out.print("Header has ");
-		System.out.print(nTracks);
-		System.out.println(" tracks");
-		return nTracks;
-	}
-
-	private static Format getHeaderFormat(BufferedInputStream midFileStream) throws IOException {
-		byte[] sizeBytes = new byte[2];
-		midFileStream.read(sizeBytes);
-		byte[] sizeBytesInt = new byte[4];
-		sizeBytesInt[0] = 0x00;
-		sizeBytesInt[1] = 0x00;
-		sizeBytesInt[2] = sizeBytes[0];
-		sizeBytesInt[3] = sizeBytes[1];
-		ByteBuffer bb = ByteBuffer.wrap(sizeBytesInt);
-		int format = bb.getInt();
-		System.out.print("Header format has");
-		switch(format) {
-		case 0 : 
-			System.out.println(" a single track");
-			return Format.SINGLE;
-		case 1: 
-			System.out.println(" synched tracks");
-			return Format.SYNCHED;
-		case 2: 
-			System.out.println(" independent tracks");
-			return Format.INDEPENDENT;
-		default : 
-			System.out.println(" an unsupported format");
-			throw new UnsupportedDataTypeException(
-					"Mid file from the BufferedInputStream passed to getHeaderFormat has an invalid format");
-		}
-	}
-
 	public static long getVariableLengthQuantity(BufferedInputStream midFileStream) throws IOException {
 		lengthToAdd = 0;
 		ArrayList<Byte> tempBytes = new ArrayList<>();
@@ -505,52 +565,6 @@ public class MidReader {
 		}
 		ByteBuffer bb = ByteBuffer.wrap(vlqLong);
 		return bb.getLong();
-	}
-
-	/**         Gets the next chunk from the BufferedInputStream containg the mid file.
-	 *  @param  midFileStream as the BufferedInputStream containing the mid file.
-	 *  @return The next chunk from the BufferedInputStream containing the mid file.
-	 *  @throws IOException if there is a I\O error while reading from the BufferedInputStream containing the mid file.
-	 */
-	private static Optional<MidChunk> getChunk(BufferedInputStream midFileStream) throws IOException {
-		MidChunk chunk = null;
-		// Get chunk type
-		byte[] chunkTypeBytes = new byte[4];
-		midFileStream.read(chunkTypeBytes);
-		ChunkType chunkType = getChunkType(chunkTypeBytes).orElse(null);
-		if(chunkType != null) {
-			if(chunkType == ChunkType.HEADER) {
-				chunk = new MidChunkHeader();
-				System.out.println("Chunk type is a header");
-			} else if(chunkType == ChunkType.TRACK) {
-				chunk = new MidChunkTrack();
-				System.out.println("Chunk type is a track");
-			}
-		} else {
-			chunk = new MidChunk();
-		}
-		// Get chunk length
-		chunk.setLength(getChunkSize(midFileStream));
-		System.out.print("Chunk length is ");
-		System.out.print(chunk.getLength());
-		System.out.println(" bytes");
-		return Optional.of(chunk);
-	}
-
-	/**        Gets the chunk type from the byte array.
-	 * @param  chunkTypeBytes as the byte array containing the chunk type.
-	 * @return The chunk type from the byte array.
-	 */
-	static Optional<ChunkType> getChunkType(byte[] chunkTypeBytes) {
-		if(chunkTypeBytes[0] == 0x4d && chunkTypeBytes[1] == 0x54 &&
-				chunkTypeBytes[2] == 0x68 && chunkTypeBytes[3] == 0x64) {
-			return Optional.of(ChunkType.HEADER);
-		} else if(chunkTypeBytes[0] == 0x4d && chunkTypeBytes[1] == 0x54 &&
-				chunkTypeBytes[2] == 0x72 && chunkTypeBytes[3] == 0x6B) {
-			return Optional.of(ChunkType.TRACK);
-		} else {
-			return Optional.empty();
-		}
 	}
 
 	/**         Gets the chunk size from the BufferedInputStream containing the mid file.	 
