@@ -1,9 +1,14 @@
 package file;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MidChunkTrack extends MidChunk {
 
-	Map<Integer, MidEvent> events;
+	private List<MidEvent> events = new ArrayList<>();
+	
+	public void addEvent(long ticksFromLastEvent, MidEvent event) {
+		
+	}
 	
 }

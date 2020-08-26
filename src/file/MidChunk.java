@@ -1,6 +1,6 @@
 package file;
 
-abstract public class MidChunk {
+public class MidChunk {
 
 	public enum ChunkType {
 		HEADER, TRACK
