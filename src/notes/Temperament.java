@@ -1,7 +1,5 @@
 package notes;
 
-import java.util.ArrayList;
-
 /**
 @author Alexander Johnston 
         Copyright 2019 

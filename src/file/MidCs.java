@@ -13,4 +13,7 @@ public class MidCs {
 	public final static int DIVISION_SMTPE_TICK_PER_FRAME_MASK = 0b0000000011111111;
 	public final static int RUNNING_STATUS_MASK = 0b10000000;
 	public final static int VAR_LENGTH_QUANTITY_MASK = 0b10000000;
+	public final static int CHANNEL_MASK = 0b00001111;
+	public final static int CONTROLLER_MASK = 0b00011111;
+
 }

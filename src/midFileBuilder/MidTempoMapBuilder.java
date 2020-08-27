@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import chunks.MidTempoMap;
-import chunks.MidTrack;
 import events.MidEvent;
 
 /** MidTempoMapBuilder is used to build MidTempoMap objects.

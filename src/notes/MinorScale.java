@@ -91,8 +91,6 @@ public class MinorScale extends Scale {
 			notes.remove(j-i);
 		}
 		
-		System.out.println("Reached start of note array");
-
 
 		// Sets the sub index as the first note below 20hz
 		for(int i = 0; i < notes.size(); i++) {

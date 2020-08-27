@@ -3,13 +3,13 @@ package notes;
 /**
 @author Alexander Johnston 
         Copyright 2019 
-        A class for making major scales
+        A class for making major scales.
  */
-public class MajorScale extends Scale{
+public class MajorScale extends Scale {
 
-	/**       Creates a major scale
-	 * @param twelveToneEqualTemperament The notes of the temperament
-	 * @param tonicLetter The tonic note
+	/**       Creates a major scale.
+	 * @param twelveToneEqualTemperament The notes of the temperament.
+	 * @param tonicLetter The tonic note.
 	 */
 	public MajorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, String tonicLetter) {
 		this.tonicLetter = tonicLetter;
@@ -49,7 +49,7 @@ public class MajorScale extends Scale{
 			}
 
 			// End of array has been reached
-		}catch(IndexOutOfBoundsException e){
+		} catch(IndexOutOfBoundsException e){
 		}
 		System.out.println("Reached end of note array");
 
@@ -88,9 +88,6 @@ public class MajorScale extends Scale{
 		for(int i = 0; i < j+1; i++) {
 			notes.remove(j-i);
 		}
-
-		System.out.println("Reached start of note array");
-
 		
 		// Sets the sub index as the first note below 20hz
 		for(int i = 0; i < notes.size(); i++) {

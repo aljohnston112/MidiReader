@@ -9,15 +9,16 @@ import java.util.ArrayList;
  */
 public class TwelveToneEqualTemperament extends EqualTemperament {
 
-	/**       Creates a 12 tone equal temperament
-	 * @param middleA is middle A
-	 * @param samplesPerSecond the sample rate 
+	/**       Creates a 12 tone equal temperament.
+	 * @param middleA is middle A.
+	 * @param octavesUnderMiddleA is the number of octaves under middle A to generate.
+	 * @param maxFrequency is the max frequency.
 	 */
-	public TwelveToneEqualTemperament(double middleA, float samplesPerSecond) {
-		super(middleA, 12, samplesPerSecond);
+	public TwelveToneEqualTemperament(double middleA, int octavesUnderMiddleA, float maxFrequency) {
+		super(middleA, 12, octavesUnderMiddleA, maxFrequency);
 	}
 
-	/**       Adds note names for 12-TET (A, A#, B, C, C#, D, D#, E, F, F#, G, G#)
+	/** Adds note names for 12-TET (A, A#, B, C, C#, D, D#, E, F, F#, G, G#)
 	 * 
 	 */
 	protected void addNames(){
@@ -31,4 +32,5 @@ public class TwelveToneEqualTemperament extends EqualTemperament {
 			notes.add(n);
 		}
 	}
+	
 }
