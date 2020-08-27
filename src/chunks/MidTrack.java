@@ -1,7 +1,9 @@
-package file;
+package chunks;
 
 import java.util.Collections;
 import java.util.List;
+
+import events.MidEvent;
 
 /** MidTrack is a midi track chunk.
  *  @author Alexander Johnston

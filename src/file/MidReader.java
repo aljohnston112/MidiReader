@@ -12,7 +12,12 @@ import java.util.Optional;
 
 import javax.activation.UnsupportedDataTypeException;
 
-import file.MidChunk.ChunkType;
+import chunks.MidTrack;
+import chunks.MidChunk.ChunkType;
+import events.MidEndOfTrackEvent;
+import events.MidEvent;
+import events.MidNoteOffEvent;
+import events.MidNoteOnEvent;
 import midFileBuilder.MidChunkBuilder;
 import midFileBuilder.MidFileBuilder;
 import midFileBuilder.MidHeaderBuilder;

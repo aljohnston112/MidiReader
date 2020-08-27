@@ -1,4 +1,4 @@
-package file;
+package events;
 
 public abstract class MidEvent {
 

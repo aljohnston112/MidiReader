@@ -1,6 +1,6 @@
 package midFileBuilder;
 
-import file.MidHeader;
+import chunks.MidHeader;
 
 public class MidFileBuilder {
 

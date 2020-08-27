@@ -1,4 +1,4 @@
-package file;
+package chunks;
 
 /** MidChunk is a midi chunk.
  *  @author Alexander Johnston

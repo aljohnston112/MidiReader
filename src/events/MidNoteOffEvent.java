@@ -1,4 +1,4 @@
-package file;
+package events;
 
 import notes.Note;
 
