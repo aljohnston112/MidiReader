@@ -90,17 +90,20 @@ public class MinorScale extends Scale {
 		for(int i = 0; i < j+1; i++) {
 			notes.remove(j-i);
 		}
+		
+		System.out.println("Reached start of note array");
+
 
 		// Sets the sub index as the first note below 20hz
-				for(int i = 0; i < notes.size(); i++) {
-					if(Math.round(notes.get(i).getFrequency()) < Math.round(20)) {
-						this.subHertzIndex = i;
-					}
+		for(int i = 0; i < notes.size(); i++) {
+			if(Math.round(notes.get(i).getFrequency()) < Math.round(20)) {
+				this.subHertzIndex = i;
+			}
 
-					// Setting the middleA index 
-					if(Math.round(notes.get(i).getFrequency()) == Math.round(middleA)) {
-						this.middleAIndex = i;
-					}
-				}			
+			// Setting the middleA index 
+			if(Math.round(notes.get(i).getFrequency()) >= Math.round(middleA)) {
+				this.middleAIndex = i;
+			}
+		}			
 	}
 }

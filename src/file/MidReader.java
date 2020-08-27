@@ -7,13 +7,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import javax.activation.UnsupportedDataTypeException;
 
-import chunks.MidTrack;
 import chunks.MidChunk.ChunkType;
+import events.MidDampEvent;
 import events.MidEndOfTrackEvent;
 import events.MidEvent;
 import events.MidNoteOffEvent;
@@ -23,7 +22,6 @@ import midFileBuilder.MidFileBuilder;
 import midFileBuilder.MidHeaderBuilder;
 import midFileBuilder.MidTrackBuilder;
 import midFileBuilder.MidHeaderBuilder.Format;
-import file.MidCs;
 import notes.MajorScale;
 import notes.MinorScale;
 import notes.Note;
@@ -33,8 +31,6 @@ import rhythm.Tempo;
 import rhythm.TimeSignature;
 
 public class MidReader {
-
-	static List<MidTrack> tracks = new ArrayList<>();
 
 	static File midFile;
 
@@ -56,40 +52,47 @@ public class MidReader {
 
 	static int panOutOf127;
 
-	static int dampOutOf127;	
-
 	public static void main(String[] args) {
 		System.out.println("MidReader started");
-		midFile = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\Undertale - Ooo.mid");
-		BufferedInputStream midFileStream = null;
-		if(verifyMidFile(midFile)) {
-			System.out.print("Mid file: ");
-			System.out.print(midFile.getName());
-			System.out.println(" exists and can be read");	
-			try {
-				FileInputStream tempMidFileStream = new FileInputStream(midFile);
-				midFileStream = new BufferedInputStream(tempMidFileStream);
-				readMidFile(midFileStream);
-				midFileStream.close();
-			} catch (FileNotFoundException e) {
-				System.out.print("Mid file: ");
-				System.out.print(midFile.getName());
-				System.out.println(" was not found");
-				e.printStackTrace();
-			} catch (UnsupportedDataTypeException e) {
-				System.out.print("Mid file: ");
-				System.out.print(midFile.getName());
-				System.out.println(" had an unsupported chunk type");
-				e.printStackTrace();
-			} catch (IOException e) {
-				System.out.println("There was an I/O error");
-				e.printStackTrace();
+		//C:\Users\aljoh\Downloads\Undertale MIDI
+		File folder = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI");
+		File[] files = folder.listFiles();
+		for(int k = 0; k < files.length; k++) {
+			if(file.FileAlorigthms.getExt(files[k]).get().equals(".mid")) {
+				midFile = files[k];
+				BufferedInputStream midFileStream = null;
+				if(verifyMidFile(midFile)) {
+					System.out.print("Mid file: ");
+					System.out.print(midFile.getName());
+					System.out.println(" exists and can be read");	
+					try {
+						FileInputStream tempMidFileStream = new FileInputStream(midFile);
+						midFileStream = new BufferedInputStream(tempMidFileStream);
+						readMidFile(midFileStream);
+						midFileStream.close();
+					} catch (FileNotFoundException e) {
+						System.out.print("Mid file: ");
+						System.out.print(midFile.getName());
+						System.out.println(" was not found");
+						e.printStackTrace();
+					} catch (UnsupportedDataTypeException e) {
+						System.out.print("Mid file: ");
+						System.out.print(midFile.getName());
+						System.out.println(" had an unsupported chunk type");
+						e.printStackTrace();
+					} catch (IOException e) {
+						System.out.println("There was an I/O error");
+						e.printStackTrace();
+					}
+				} else {
+					System.out.print("Mid file: ");
+					System.out.print(midFile.getName());
+					System.out.println(" does not exist or can not be read");
+				}
 			}
-		} else {
-			System.out.print("Mid file: ");
-			System.out.print(midFile.getName());
-			System.out.println(" does not exist or can not be read");
 		}
+		//midFile = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\Undertale - Dogbass.mid");
+		
 
 	}
 
@@ -135,15 +138,16 @@ public class MidReader {
 							midFileStream.read();
 							length++;
 						}
-					} else if(event instanceof MidNoteOnEvent || event instanceof MidNoteOffEvent) {
-						((MidTrack) chunkBuilder).addEvent(event);
+					} else if(event instanceof MidNoteOnEvent || event instanceof MidNoteOffEvent || 
+							event instanceof MidDampEvent) {
+						((MidTrackBuilder) chunkBuilder).addEvent(event);
 					}
 				}
-				tracks.add((MidTrack)chunkBuilder);
+				midBuilder.addTrack(((MidTrackBuilder)chunkBuilder).build());
 			} else {
 				while(length < chunkBuilder.getLength()) {
 					midFileStream.read();
-					length++;
+					length = length + 1;
 				}
 			}
 		}
@@ -222,10 +226,10 @@ public class MidReader {
 			} else if(chunkType == ChunkType.TRACK) {
 				chunkBuilder = new MidTrackBuilder();
 				System.out.println("Chunk type is a track");
+			} else {
+				chunkBuilder = new MidChunkBuilder();
 			}
-		} else {
-			chunkBuilder = new MidChunkBuilder();
-		}
+		} 
 		// Get chunk length
 		chunkBuilder.setLength(getChunkSize(midFileStream));
 		System.out.print("Chunk length is ");
@@ -257,17 +261,16 @@ public class MidReader {
 
 	private static Optional<MidEvent> getEvent(BufferedInputStream midFileStream) throws IOException {
 		lengthToAdd = 0;
-		midFileStream.mark(0xFF);
+		int readLimit = 255;
+		midFileStream.mark(readLimit);
 		byte temp = (byte) midFileStream.read();
-
-		if((temp & 0b10000000) == 0b10000000) {
+		lengthToAdd++;
+		if((temp & MidCs.RUNNING_STATUS_MASK) == MidCs.RUNNING_STATUS_MASK) {
 			runningStatus = temp;
 		} else {
 			midFileStream.reset();
 			temp = runningStatus;
 		}
-
-		lengthToAdd++;
 		if(temp >= (byte)0x80 && temp <= (byte)0x89) {
 			int channel = temp & 0b00001111;
 			int fromMiddleC = (midFileStream.read() - 0x3C);
@@ -275,6 +278,7 @@ public class MidReader {
 			int noteIndex = middleCIndex + fromMiddleC;
 			Note note = scale.notes.get(noteIndex);
 			int velocity = midFileStream.read();
+			lengthToAdd+=2;
 			System.out.print("Note ");
 			System.out.print(note.getName());
 			System.out.print(" was turned off");
@@ -286,8 +290,16 @@ public class MidReader {
 			int fromMiddleC = (midFileStream.read() - 0x3C);
 			int middleCIndex = scale.middleAIndex+3;
 			int noteIndex = middleCIndex + fromMiddleC;
-			Note note = scale.notes.get(noteIndex);
+			Note note = null;
+			try {
+			note = scale.notes.get(noteIndex);
+			} catch(ArrayIndexOutOfBoundsException e) {
+				System.out.println(fromMiddleC);
+				System.out.println(middleCIndex);
+				System.out.println(noteIndex);
+			}
 			int velocity = midFileStream.read();
+			lengthToAdd+=2;
 			System.out.print("Note ");
 			System.out.print(note.getName());
 			System.out.print(" with velocity ");
@@ -321,17 +333,41 @@ public class MidReader {
 				lengthToAdd++;
 				System.out.println("Bank select LSB");
 				return Optional.empty();
+			} else if(temp == 0x26) {
+				int controllerLSB = midFileStream.read();
+				lengthToAdd++;
+				System.out.print("Controller LSB is ");
+				System.out.println(controllerLSB);
+				return Optional.empty();
 			} else if(temp == 0x40) {
-				dampOutOf127 = midFileStream.read();
+				int dampOutOf127 = midFileStream.read();
 				lengthToAdd++;
 				System.out.print("Damp changed to ");
 				System.out.print(dampOutOf127);
 				System.out.println(" out of 127");
+				return Optional.of(new MidDampEvent(dampOutOf127));
+			} else if(temp == 0x64) {
+				int parameterLSB = midFileStream.read();
+				lengthToAdd++;
+				System.out.print("Parameter lsb is ");
+				System.out.println(parameterLSB);
+				return Optional.empty();
+			} else if(temp == 0x65) {
+				int parameterMSB = midFileStream.read();
+				lengthToAdd++;
+				System.out.print("Parameter msb is ");
+				System.out.println(parameterMSB);
+				return Optional.empty();
+			} else if(temp == 0x06) {
+				int dataEntryMSB = midFileStream.read();
+				lengthToAdd++;
+				System.out.print("Data entry msb is ");
+				System.out.println(dataEntryMSB);
 				return Optional.empty();
 			}
 		} else if(temp >= (byte)0xC0 && temp <= (byte)0xC9) {
 			int programNumber = midFileStream.read();
-			lengthToAdd+=2;
+			lengthToAdd++;
 			System.out.println("Program number change");
 			return Optional.empty();
 		} else if(temp == (byte)0xFF) {
@@ -345,9 +381,9 @@ public class MidReader {
 				StringBuilder sb = new StringBuilder();
 				for(int i = 0; i < nameLength; i++) {
 					tempChar = midFileStream.read();
+					lengthToAdd++;
 					sb.append((char)tempChar);
 				}
-				lengthToAdd+=nameLength;
 				if(temp == 0x03) {
 					System.out.print("Track name is ");
 				} else {
@@ -421,10 +457,12 @@ public class MidReader {
 				temp = (byte) midFileStream.read();
 				lengthToAdd++;
 				if(temp == 0x02) {
-					int nSharps = midFileStream.read();
+					byte nSharps = (byte) midFileStream.read();
 					byte keyType = (byte) midFileStream.read();
 					lengthToAdd+=2;
 					TwelveToneEqualTemperament twelveToneEqualTemperament = new TwelveToneEqualTemperament(440, 48000);
+					scale = twelveToneEqualTemperament;
+					/*
 					if(keyType == 0x00) {
 						// Major key
 						createMajorScale(twelveToneEqualTemperament, nSharps);
@@ -432,19 +470,21 @@ public class MidReader {
 						// Minor key
 						createMinorScale(twelveToneEqualTemperament, nSharps);
 					}
+					*/
 					System.out.println("Scale created");
 					return Optional.empty();
 				}
 			}
 		}
 		midFileStream.reset();
+		// TODO delete when done testing or keep for error checking
 		System.out.println(midFileStream.read());
 		System.out.println(midFileStream.read());
 		System.out.println(midFileStream.read());
 		return null;
 	}
 
-	private static void createMinorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, int nSharps) {
+	private static void createMinorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, byte nSharps) {
 		switch(nSharps) {
 		case -7 :
 			scale = new MinorScale(twelveToneEqualTemperament, "G#");
@@ -494,7 +534,7 @@ public class MidReader {
 		}
 	}
 
-	private static void createMajorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, int nSharps) {
+	private static void createMajorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, byte nSharps) {
 		switch(nSharps) {
 		case -7 :
 			scale = new MajorScale(twelveToneEqualTemperament, "B");
@@ -549,8 +589,8 @@ public class MidReader {
 		ArrayList<Byte> tempBytes = new ArrayList<>();
 		byte tempByte = (byte) midFileStream.read();
 		lengthToAdd++;
-		while((tempByte & 0b10000000) == 0b10000000) {
-			tempByte = (byte) (tempByte & 0b01111111);
+		while((tempByte & MidCs.VAR_LENGTH_QUANTITY_MASK) == MidCs.VAR_LENGTH_QUANTITY_MASK) {
+			tempByte = (byte) (tempByte & ~MidCs.VAR_LENGTH_QUANTITY_MASK);
 			tempBytes.add(tempByte);
 			tempByte = (byte) midFileStream.read();
 			lengthToAdd++;

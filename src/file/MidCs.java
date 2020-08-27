@@ -11,5 +11,6 @@ public class MidCs {
 	public final static int DIVISION_SMTPE_FRAMES_PER_SEC_30_DROP_FRAME = -29;
 	public final static int DIVISION_SMTPE_FRAMES_PER_SEC_30 = -30;
 	public final static int DIVISION_SMTPE_TICK_PER_FRAME_MASK = 0b0000000011111111;
-
+	public final static int RUNNING_STATUS_MASK = 0b10000000;
+	public final static int VAR_LENGTH_QUANTITY_MASK = 0b10000000;
 }

@@ -89,16 +89,19 @@ public class MajorScale extends Scale{
 			notes.remove(j-i);
 		}
 
-		// Sets the sub index as the first note below 20hz
-				for(int i = 0; i < notes.size(); i++) {
-					if(Math.round(notes.get(i).getFrequency()) < Math.round(20)) {
-						this.subHertzIndex = i;
-					}
+		System.out.println("Reached start of note array");
 
-					// Setting the middleA index 
-					if(Math.round(notes.get(i).getFrequency()) == Math.round(middleA)) {
-						this.middleAIndex = i;
-					}
-				}
+		
+		// Sets the sub index as the first note below 20hz
+		for(int i = 0; i < notes.size(); i++) {
+			if(Math.round(notes.get(i).getFrequency()) < Math.round(20)) {
+				this.subHertzIndex = i;
+			}
+
+			// Setting the middleA index 
+			if(Math.round(notes.get(i).getFrequency()) >= Math.round(middleA)) {
+				this.middleAIndex = i;
+			}
+		}
 	}
 }

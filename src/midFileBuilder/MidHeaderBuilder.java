@@ -34,35 +34,35 @@ public class MidHeaderBuilder extends MidChunkBuilder {
 	/**       Sets the format of the MidHeader to be built.
 	 * @param format as the format of the MidHeader.
 	 */
-	void setFormat(Format format){
+	public void setFormat(Format format){
 		this.format = format;
 	}
 	
 	/**
 	 * @return The format to be used when building a MidHeader.
 	 */
-	Format getFormat() {
+	public Format getFormat() {
 		return format;
 	}
 
 	/**       Sets the number of tracks in the MidHeader to be built.
 	 * @param nTracks as the number of tracks in the MidHeader.
 	 */
-	void setnTracks(int nTracks) {
+	public void setNTracks(int nTracks) {
 		this.nTracks = nTracks;
 	}
 	
 	/**
 	 * @return The number of tracks to be used when building a MidHeader.
 	 */
-	int getnTracks() {
+	public int getnTracks() {
 		return nTracks;
 	}
 
 	/**       Sets the ticks per second or the ticks per quarter note based on the division.
 	 * @param division as the midi header division used to figure out the ticks per second or the ticks per quarter note.
 	 */
-	void setDivision(int division) {
+	public void setDivision(int division) {
 		if((division & MidCs.DIVISION_SMTPE_MASK) == MidCs.DIVISION_SMTPE_MASK){
 			isSeconds = true;
 			byte framesPerSecond = (byte) ((division & ~MidCs.DIVISION_SMTPE_MASK) >> 
