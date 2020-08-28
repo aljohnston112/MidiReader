@@ -14,6 +14,12 @@ public class MidTrackBuilder extends MidChunkBuilder {
 
 	// The midi events
 	private List<MidEvent> events = new ArrayList<>();
+	
+	private String trackName = "";
+	
+	private String instrumentName = "";
+	
+	private String deviceName = "";
 
 	/**       Adds a MidEvent to the list of events used to build a MidTrack.
 	 * @param event as the MidEvent to add to the list of events used to build a MidTrack.
@@ -31,7 +37,31 @@ public class MidTrackBuilder extends MidChunkBuilder {
 		if(length == -1) {
 			throw new IllegalArgumentException("The length for the MidTrack has not been set");
 		}
-		return new MidTrack(length, events);
+		return new MidTrack(length, events, trackName, instrumentName, deviceName);
+	}
+
+	public String getTrackName() {
+		return trackName;
+	}
+
+	public void setTrackName(String trackName) {
+		this.trackName = trackName;
+	}
+
+	public String getInstrumentName() {
+		return instrumentName;
+	}
+
+	public void setInstrumentName(String instrumentName) {
+		this.instrumentName = instrumentName;
+	}
+
+	public String getDeviceName() {
+		return deviceName;
+	}
+
+	public void setDeviceName(String deviceName) {
+		this.deviceName = deviceName;
 	}
 
 }

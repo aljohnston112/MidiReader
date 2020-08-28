@@ -13,7 +13,8 @@ import javax.activation.UnsupportedDataTypeException;
 
 import chunks.MidChunk.ChunkType;
 import events.MidEventDamp;
-import events.MidEventDataEntry;
+import events.MidEventDataEntryLSB;
+import events.MidEventDataEntryMSB;
 import events.MidEventEndOfTrack;
 import events.MidEvent;
 import events.MidEventBankSelect;
@@ -34,7 +35,6 @@ import notes.MinorScale;
 import notes.Note;
 import notes.Scale;
 import notes.TwelveToneEqualTemperament;
-import notes.TwentyFourToneEqualTemperament;
 import rhythm.Tempo;
 import rhythm.TimeSignature;
 
@@ -45,34 +45,40 @@ public class MidReader {
 	static long lengthToAdd = 0;
 
 	static byte runningStatus;
-	
+
 	static byte bankSelectMSB = -1;
-	
+
 	static byte parameterLSB = -1;
-	
+
 	static byte parameterMSB = -1;
+
+	static TimeSignature ts = null;
+
+	static int clocksPerMetronomeTick = -1;
+
+	static int n32ndNotesPer24Clocks = -1;
+
+	static Scale scale = null;
+
+	static Tempo tempo = null;
 	
-	static byte dataEntryMSB = -1;
-	
-	static boolean wasDataEntryMSB = false;
-	
-	static TimeSignature ts;
-
-	static int clocksPerMetTick;
-
-	static int n32ndNotesPer24Clocks;
-
-	static Scale scale;
-
-	static Tempo tempo;
+	static MidSMTPEOffset startTime = null;
 
 	public static void main(String[] args) {
 		System.out.println("MidReader started");
-		//C:\Users\aljoh\Downloads\Undertale MIDI
 		File folder = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI");
 		File[] files = folder.listFiles();
 		for(int k = 0; k < files.length; k++) {
 			if(file.FileAlorigthms.getExt(files[k]).get().equals(".mid")) {
+				bankSelectMSB = -1;
+				parameterLSB = -1;
+				parameterMSB = -1;
+				ts = null;
+				clocksPerMetronomeTick = -1;
+				n32ndNotesPer24Clocks = -1;
+				scale = null;
+				tempo = null;
+				startTime = null;
 				midFile = files[k];
 				BufferedInputStream midFileStream = null;
 				if(verifyMidFile(midFile)) {
@@ -104,9 +110,7 @@ public class MidReader {
 					System.out.println(" does not exist or can not be read");
 				}
 			}
-		}
-		//midFile = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\Undertale - Dogbass.mid");
-		
+		}		
 
 	}
 
@@ -152,8 +156,7 @@ public class MidReader {
 							midFileStream.read();
 							length++;
 						}
-					} else if(event instanceof MidEventNoteOn || event instanceof MidEventNoteOff || 
-							event instanceof MidEventDamp) {
+					} else {
 						((MidTrackBuilder) chunkBuilder).addEvent(event);
 					}
 				}
@@ -165,8 +168,20 @@ public class MidReader {
 				}
 			}
 		}
+		if(tempo != null) {
+			midBuilder.addTempo(tempo);
+		}
+		if(startTime != null) {
+			midBuilder.addStartTime(startTime);
+		}
+		if(clocksPerMetronomeTick != -1) {
+			midBuilder.setClocksPerMetronomeTick(clocksPerMetronomeTick);			
+		}
+		if(n32ndNotesPer24Clocks != -1) {
+			midBuilder.setN32ndNotesPer24Clocks(n32ndNotesPer24Clocks);			
+		}
 	}
-	
+
 	private static Format getHeaderFormat(BufferedInputStream midFileStream) throws IOException {
 		byte[] sizeBytes = new byte[2];
 		midFileStream.read(sizeBytes);
@@ -193,7 +208,7 @@ public class MidReader {
 			return Format.UNKNOWN;
 		}
 	}
-	
+
 	private static int getHeaderNTracks(BufferedInputStream midFileStream) throws IOException {
 		byte[] nTracksBytes = new byte[2];
 		midFileStream.read(nTracksBytes);
@@ -209,7 +224,7 @@ public class MidReader {
 		System.out.println(" tracks");
 		return nTracks;
 	}
-	
+
 	private static int getHeaderDivision(BufferedInputStream midFileStream) throws IOException {
 		byte[] divisionBytes = new byte[2];
 		midFileStream.read(divisionBytes);
@@ -221,7 +236,7 @@ public class MidReader {
 		ByteBuffer bb = ByteBuffer.wrap(divisionBytesInt);		
 		return bb.getInt();
 	}
-	
+
 	/**         Gets the next chunk from the BufferedInputStream containing the mid file.
 	 *  @param  midFileStream as the BufferedInputStream containing the mid file.
 	 *  @return The next chunk from the BufferedInputStream containing the mid file.
@@ -251,7 +266,7 @@ public class MidReader {
 		System.out.println(" bytes");
 		return Optional.of(chunkBuilder);
 	}
-	
+
 	/**        Gets the chunk type from the byte array.
 	 * @param  chunkTypeBytes as the byte array containing the chunk type.
 	 * @return The chunk type from the byte array.
@@ -284,12 +299,6 @@ public class MidReader {
 		} else {
 			midFileStream.reset();
 			temp = runningStatus;
-		}
-		if(wasDataEntryMSB) {
-			if(temp >= (byte)0xB0 && temp <= (byte)0xBF) {
-				
-			}
-			// TODO
 		}
 		if(temp >= (byte)0x80 && temp <= (byte)0x8F) {
 			// Note off
@@ -364,7 +373,7 @@ public class MidReader {
 				lengthToAdd++;
 				System.out.print("Controller LSB is ");
 				System.out.println(dataEntryLSB);
-				return Optional.of(new MidEventDataEntry(channel, dataEntryMSB, dataEntryLSB));
+				return Optional.of(new MidEventDataEntryLSB(channel, dataEntryLSB));
 			} else if(temp == 0x40) {
 				// Damp change
 				int dampOutOf127 = midFileStream.read();
@@ -394,12 +403,11 @@ public class MidReader {
 				}
 				return getRegisteredParameterEvent(channel);
 			} else if(temp == 0x06) {
-				dataEntryMSB = (byte) midFileStream.read();
+				byte dataEntryMSB = (byte) midFileStream.read();
 				lengthToAdd++;
-				wasDataEntryMSB = true;
 				System.out.print("Data entry msb is ");
 				System.out.println(dataEntryMSB);
-				return Optional.empty();
+				return Optional.of(new MidEventDataEntryMSB(channel, dataEntryMSB));
 			}
 		} else if(temp >= (byte)0xC0 && temp <= (byte)0xCF) {
 			int channel = temp & MidCs.CHANNEL_MASK;
@@ -419,6 +427,7 @@ public class MidReader {
 			System.out.println(pitchBendData);
 			return Optional.of(new MidEventPitchBend(channel, pitchBendData));
 		} else if(temp == (byte)0xFF) {
+			// Meta events
 			temp = (byte) midFileStream.read();
 			lengthToAdd++;
 			if(temp == 0x03 ||temp == 0x04 || temp == 0x09) {
@@ -434,12 +443,15 @@ public class MidReader {
 				}
 				if(temp == 0x03) {
 					System.out.print("Track name is ");
-				} else {
+				} else if(temp == 0x04) {
 					System.out.print("Instrument name is ");
+				} else if(temp == 0x09) {
+					System.out.print("Device name is ");
 				}
 				System.out.println(sb);
 				return Optional.empty();
 			} else if(temp == 0x2F) {
+				// End of track
 				temp = (byte) midFileStream.read();
 				lengthToAdd++;
 				if(temp == 0x00) {
@@ -450,6 +462,7 @@ public class MidReader {
 				temp = (byte) midFileStream.read();
 				lengthToAdd++;
 				if(temp == 0x03) {
+					// Tempo
 					byte[] uSecPerQuarterNoteBytes = new byte[3];
 					midFileStream.read(uSecPerQuarterNoteBytes);
 					lengthToAdd+=3;
@@ -468,33 +481,40 @@ public class MidReader {
 				temp = (byte) midFileStream.read();
 				lengthToAdd++;
 				if(temp == 0x05) {
+					int hours = midFileStream.read();
+					int minutes = midFileStream.read();
+					int seconds  = midFileStream.read();
+					int frames = midFileStream.read();
+					int nHundredthFrames = midFileStream.read();
 					System.out.print("Track starts at ");
-					System.out.print(midFileStream.read());
+					System.out.print(hours);
 					System.out.print(":");
-					System.out.print(midFileStream.read());
+					System.out.print(minutes);
 					System.out.print(":");
-					System.out.print(midFileStream.read());
+					System.out.print(seconds);
 					System.out.print(":");
-					System.out.print(midFileStream.read());
+					System.out.print(frames);
 					System.out.print(":");
-					System.out.println(midFileStream.read());
+					System.out.println(nHundredthFrames);
 					lengthToAdd+=5;
+					startTime = new MidSMTPEOffset(hours, minutes, seconds, frames, nHundredthFrames);
 					return Optional.empty();
 				}
 			} else if(temp == 0x58) {
 				temp = (byte) midFileStream.read();
 				lengthToAdd++;
 				if(temp == 0x04) {
+					// Time signature
 					int beatsPerBar = midFileStream.read();
 					double beatUnit = midFileStream.read();
 					ts = new TimeSignature(beatUnit, beatsPerBar);
-					clocksPerMetTick = midFileStream.read();
+					clocksPerMetronomeTick = midFileStream.read();
 					n32ndNotesPer24Clocks = midFileStream.read();
 					lengthToAdd+=4;
 					System.out.print("The time signature is ");
 					System.out.println(ts);
 					System.out.print("There are ");
-					System.out.print(clocksPerMetTick);
+					System.out.print(clocksPerMetronomeTick);
 					System.out.println(" midi clocks per metronome click");
 					System.out.print("There are ");
 					System.out.print(n32ndNotesPer24Clocks);
@@ -511,9 +531,9 @@ public class MidReader {
 					int middleA = 440;
 					int octavesBelowMiddleA = 9;
 					int maxFrequency = 20000;
-					TwentyFourToneEqualTemperament twentyFourToneEqualTemperament = new TwentyFourToneEqualTemperament(
+					TwelveToneEqualTemperament twelveToneEqualTemperament = new TwelveToneEqualTemperament(
 							middleA, octavesBelowMiddleA, maxFrequency);
-					scale = twentyFourToneEqualTemperament;
+					scale = twelveToneEqualTemperament;
 					/*
 					if(keyType == 0x00) {
 						// Major key
@@ -522,7 +542,7 @@ public class MidReader {
 						// Minor key
 						createMinorScale(twelveToneEqualTemperament, nSharps);
 					}
-					*/
+					 */
 					System.out.println("Scale created");
 					return Optional.empty();
 				}

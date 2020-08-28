@@ -2,7 +2,7 @@ package events;
 
 public final class MidEventPitchBendSensitivity extends MidEvent {
 	
-	private final int channel;
+	final int channel;
 	
 	private MidEventPitchBendSensitivity() {
 		throw new AssertionError("Default MidEventPitchBendSensitivity constructor is unsupported");
@@ -10,10 +10,6 @@ public final class MidEventPitchBendSensitivity extends MidEvent {
 	
 	public MidEventPitchBendSensitivity(int channel) {
 		this.channel = channel;
-	}
-
-	public int getChannel() {
-		return channel;
 	}
 	
 }
