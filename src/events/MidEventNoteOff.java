@@ -4,11 +4,11 @@ import notes.Note;
 
 public final class MidEventNoteOff extends MidEvent {
 
-	final int channel;
+	public final int channel;
 	
-	final Note note;
+	public final Note note;
 	
-	final int velocity;
+	public final int velocity;
 	
 	private MidEventNoteOff() {
 		throw new AssertionError("Default MidNoteOffEvent constructor is unsupported");

@@ -13,7 +13,7 @@ public class MidHeaderBuilder extends MidChunkBuilder {
 	 *  
 	 */
 	public enum Format {
-		SINGLE, SYNCHED, INDEPENDENT, UNKNOWN
+		SINGLE_MULTI_CHANNEL, SYNCHED_TRACKS, SEQUENTIALLY_INDEPENDENT_TRACKS, UNKNOWN
 	}
 	
 	// The format of the midi file

@@ -15,7 +15,9 @@ import chunks.MidChunk.ChunkType;
 import events.MidEventDamp;
 import events.MidEventDataEntryLSB;
 import events.MidEventDataEntryMSB;
+import events.MidEventDeviceName;
 import events.MidEventEndOfTrack;
+import events.MidEventInstrumentName;
 import events.MidEvent;
 import events.MidEventBankSelect;
 import events.MidEventNoteOff;
@@ -24,16 +26,16 @@ import events.MidEventPanChange;
 import events.MidEventPitchBend;
 import events.MidEventPitchBendSensitivity;
 import events.MidEventProgramChange;
+import events.MidEventTrackName;
 import events.MidEventVolumeChange;
 import midFileBuilder.MidChunkBuilder;
 import midFileBuilder.MidFileBuilder;
 import midFileBuilder.MidHeaderBuilder;
 import midFileBuilder.MidTrackBuilder;
 import midFileBuilder.MidHeaderBuilder.Format;
-import notes.MajorScale;
-import notes.MinorScale;
 import notes.Note;
 import notes.Scale;
+import notes.ThreeDimensionalNoteArray;
 import notes.TwelveToneEqualTemperament;
 import rhythm.Tempo;
 import rhythm.TimeSignature;
@@ -45,6 +47,8 @@ public class MidReader {
 	static long lengthToAdd = 0;
 
 	static byte runningStatus;
+
+	static boolean runningStatusInvalid = false;
 
 	static byte bankSelectMSB = -1;
 
@@ -61,7 +65,7 @@ public class MidReader {
 	static Scale scale = null;
 
 	static Tempo tempo = null;
-	
+
 	static MidSMTPEOffset startTime = null;
 
 	public static void main(String[] args) {
@@ -169,10 +173,21 @@ public class MidReader {
 			}
 		}
 		if(tempo != null) {
-			midBuilder.addTempo(tempo);
+			if(midBuilder.getTempo() == null) {
+				midBuilder.setTempo(tempo);
+			}
+		} else {
+			if(midBuilder.getTempo() == null) {
+				midBuilder.setTempo(new Tempo(120));
+			}
+		}
+		if(ts != null) {
+			midBuilder.setTimeSignature(ts);
+		} else {
+			midBuilder.setTimeSignature(new TimeSignature(4, 4));			
 		}
 		if(startTime != null) {
-			midBuilder.addStartTime(startTime);
+			midBuilder.setStartTime(startTime);
 		}
 		if(clocksPerMetronomeTick != -1) {
 			midBuilder.setClocksPerMetronomeTick(clocksPerMetronomeTick);			
@@ -180,6 +195,9 @@ public class MidReader {
 		if(n32ndNotesPer24Clocks != -1) {
 			midBuilder.setN32ndNotesPer24Clocks(n32ndNotesPer24Clocks);			
 		}
+		MidFile mf = midBuilder.build();
+		ThreeDimensionalNoteArray b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
+		System.out.println("File has been built");
 	}
 
 	private static Format getHeaderFormat(BufferedInputStream midFileStream) throws IOException {
@@ -196,13 +214,13 @@ public class MidReader {
 		switch(format) {
 		case 0 : 
 			System.out.println(" a single track");
-			return Format.SINGLE;
+			return Format.SINGLE_MULTI_CHANNEL;
 		case 1: 
 			System.out.println(" synched tracks");
-			return Format.SYNCHED;
+			return Format.SYNCHED_TRACKS;
 		case 2: 
 			System.out.println(" independent tracks");
-			return Format.INDEPENDENT;
+			return Format.SEQUENTIALLY_INDEPENDENT_TRACKS;
 		default : 
 			System.out.println(" an unknown format");
 			return Format.UNKNOWN;
@@ -294,259 +312,33 @@ public class MidReader {
 		midFileStream.mark(readLimit);
 		byte temp = (byte) midFileStream.read();
 		lengthToAdd++;
-		if((temp & MidCs.RUNNING_STATUS_MASK) == MidCs.RUNNING_STATUS_MASK) {
+		if(((temp & MidCs.RUNNING_STATUS_MASK) == MidCs.RUNNING_STATUS_MASK) || runningStatusInvalid) {
 			runningStatus = temp;
+			if(temp != 0xFF && temp != 0xF7 && temp != 0xF0) {
+				runningStatusInvalid = false;
+			}
 		} else {
 			midFileStream.reset();
 			temp = runningStatus;
 		}
+		int channel = temp & MidCs.CHANNEL_MASK;
 		if(temp >= (byte)0x80 && temp <= (byte)0x8F) {
-			// Note off
-			int channel = temp & MidCs.CHANNEL_MASK;
-			int halfStepsFromMiddleC = (midFileStream.read() - 0x3C);
-			int middleCIndex = scale.middleAIndex+3;
-			int noteIndex = middleCIndex + halfStepsFromMiddleC;
-			Note note = scale.notes.get(noteIndex);
-			int velocity = midFileStream.read();
-			lengthToAdd+=2;
-			System.out.print("Note ");
-			System.out.print(note.getName());
-			System.out.print(" was turned off");
-			System.out.print(" with velocity ");
-			System.out.println(velocity);
-			return Optional.of(new MidEventNoteOff(channel, note, velocity));
+			return getNoteOffEvent(channel, midFileStream);
 		} else if(temp >= (byte)0x90 && temp <= (byte)0x99) {
-			// Note on
-			int channel = temp & MidCs.CHANNEL_MASK;
-			int halfStepsFromMiddleC = (midFileStream.read() - 0x3C);
-			int middleCIndex = scale.middleAIndex+3;
-			int noteIndex = middleCIndex + halfStepsFromMiddleC;
-			Note note = scale.notes.get(noteIndex);
-			int velocity = midFileStream.read();
-			lengthToAdd+=2;
-			System.out.print("Note ");
-			System.out.print(note.getName());
-			System.out.print(" with velocity ");
-			System.out.print(velocity);
-			System.out.println(" was turned on");
-			return Optional.of(new MidEventNoteOn(channel, note, velocity));
+			return getNoteOnEvent(channel, midFileStream);
+		} else if(temp >= (byte)0xD0 && temp <= (byte)0xDF) {
+			// TODO poly key pressure
 		} else if(temp >= (byte)0xB0 && temp <= (byte)0xBF) {
-			// Control change
-			int channel = temp & MidCs.CHANNEL_MASK;
-			temp = (byte) midFileStream.read();
-			lengthToAdd++;
-			if(temp == 0x00) {
-				// Bank Select MSB
-				bankSelectMSB = (byte) midFileStream.read();
-				lengthToAdd++;
-				System.out.println("Bank select MSB");
-				return Optional.empty();
-			} else if(temp == 0x07) {
-				// Volume change
-				int volumeOutOf127 = midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Volume changed to ");
-				System.out.print(volumeOutOf127);
-				System.out.println(" out of 127");
-				return Optional.of(new MidEventVolumeChange(channel, volumeOutOf127));
-			} else if(temp == 0x0A) { 
-				// Pan change
-				int panOutOf127 = midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Pan changed to ");
-				System.out.print(panOutOf127);
-				System.out.println(" out of 127");
-				return Optional.of(new MidEventPanChange(channel, panOutOf127));
-			} else if(temp == 0x20) {
-				// Bank select LSB
-				byte bankSelectLSB = (byte) midFileStream.read();
-				lengthToAdd++;
-				int bankSelect = (bankSelectMSB << 7) | bankSelectLSB;
-				bankSelectMSB = -1;
-				System.out.println("Bank select LSB");
-				return Optional.of(new MidEventBankSelect(channel, bankSelect));
-			} else if(temp >= 0x20 && temp <= 0x4F) {
-				// Controller number followed by 
-				// data entry LSB
-				int controllerNumber = temp & MidCs.CONTROLLER_MASK;
-				byte dataEntryLSB = (byte) midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Controller LSB is ");
-				System.out.println(dataEntryLSB);
-				return Optional.of(new MidEventDataEntryLSB(channel, dataEntryLSB));
-			} else if(temp == 0x40) {
-				// Damp change
-				int dampOutOf127 = midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Damp changed to ");
-				System.out.print(dampOutOf127);
-				System.out.println(" out of 127");
-				return Optional.of(new MidEventDamp(channel, dampOutOf127));
-			} else if(temp == 0x64) {
-				// Parameter LSB
-				parameterLSB = (byte) midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Parameter lsb is ");
-				System.out.println(parameterLSB);
-				if(parameterMSB == -1) {
-					return Optional.empty();
-				}
-				return getRegisteredParameterEvent(channel);
-			} else if(temp == 0x65) {
-				// Parameter MSB
-				parameterMSB = (byte) midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Parameter msb is ");
-				System.out.println(parameterMSB);
-				if(parameterLSB == -1) {
-					return Optional.empty();
-				}
-				return getRegisteredParameterEvent(channel);
-			} else if(temp == 0x06) {
-				byte dataEntryMSB = (byte) midFileStream.read();
-				lengthToAdd++;
-				System.out.print("Data entry msb is ");
-				System.out.println(dataEntryMSB);
-				return Optional.of(new MidEventDataEntryMSB(channel, dataEntryMSB));
-			}
+			return getControlChange(channel, midFileStream);
 		} else if(temp >= (byte)0xC0 && temp <= (byte)0xCF) {
-			int channel = temp & MidCs.CHANNEL_MASK;
-			int programNumber = midFileStream.read();
-			lengthToAdd++;
-			System.out.print("Program number changed to ");
-			System.out.println(programNumber);
-			return Optional.of(new MidEventProgramChange(channel, programNumber));
+			return getProgramChange(channel, midFileStream);
+		} else if(temp >= (byte)0xD0 && temp <= (byte)0xDF) {
+			// TODO channel pressure
 		} else if(temp >= (byte)0xE0 && temp <= (byte)0xEF) {
-			int channel = temp & MidCs.CHANNEL_MASK;
-			byte lsb = (byte) midFileStream.read();
-			lengthToAdd++;
-			byte msb = (byte) midFileStream.read();
-			lengthToAdd++;
-			int pitchBendData = lsb | (msb << 7);
-			System.out.print("Pitch bend changed to ");
-			System.out.println(pitchBendData);
-			return Optional.of(new MidEventPitchBend(channel, pitchBendData));
+			return getPitchBendEvent(channel, midFileStream);
 		} else if(temp == (byte)0xFF) {
-			// Meta events
-			temp = (byte) midFileStream.read();
-			lengthToAdd++;
-			if(temp == 0x03 ||temp == 0x04 || temp == 0x09) {
-				long tempLengthToAdd = lengthToAdd;
-				long nameLength = getVariableLengthQuantity(midFileStream);
-				lengthToAdd += tempLengthToAdd;
-				int tempChar;
-				StringBuilder sb = new StringBuilder();
-				for(int i = 0; i < nameLength; i++) {
-					tempChar = midFileStream.read();
-					lengthToAdd++;
-					sb.append((char)tempChar);
-				}
-				if(temp == 0x03) {
-					System.out.print("Track name is ");
-				} else if(temp == 0x04) {
-					System.out.print("Instrument name is ");
-				} else if(temp == 0x09) {
-					System.out.print("Device name is ");
-				}
-				System.out.println(sb);
-				return Optional.empty();
-			} else if(temp == 0x2F) {
-				// End of track
-				temp = (byte) midFileStream.read();
-				lengthToAdd++;
-				if(temp == 0x00) {
-					System.out.println("End of track");
-					return Optional.of(new MidEventEndOfTrack());
-				}
-			} else if(temp == 0x51) {
-				temp = (byte) midFileStream.read();
-				lengthToAdd++;
-				if(temp == 0x03) {
-					// Tempo
-					byte[] uSecPerQuarterNoteBytes = new byte[3];
-					midFileStream.read(uSecPerQuarterNoteBytes);
-					lengthToAdd+=3;
-					byte[] uSecPerQuarterNoteBytesBytesInt = new byte[4];
-					uSecPerQuarterNoteBytesBytesInt[0] = 0x00;
-					uSecPerQuarterNoteBytesBytesInt[1] = uSecPerQuarterNoteBytes[0];
-					uSecPerQuarterNoteBytesBytesInt[2] = uSecPerQuarterNoteBytes[1];
-					uSecPerQuarterNoteBytesBytesInt[3] = uSecPerQuarterNoteBytes[2];
-					ByteBuffer bb = ByteBuffer.wrap(uSecPerQuarterNoteBytesBytesInt);
-					double beatsPerMinute = (60000000.0/((double)(bb.getInt())));
-					tempo = new Tempo(beatsPerMinute);
-					System.out.println(tempo);
-					return Optional.empty();
-				}
-			} else if(temp == 0x54) {
-				temp = (byte) midFileStream.read();
-				lengthToAdd++;
-				if(temp == 0x05) {
-					int hours = midFileStream.read();
-					int minutes = midFileStream.read();
-					int seconds  = midFileStream.read();
-					int frames = midFileStream.read();
-					int nHundredthFrames = midFileStream.read();
-					System.out.print("Track starts at ");
-					System.out.print(hours);
-					System.out.print(":");
-					System.out.print(minutes);
-					System.out.print(":");
-					System.out.print(seconds);
-					System.out.print(":");
-					System.out.print(frames);
-					System.out.print(":");
-					System.out.println(nHundredthFrames);
-					lengthToAdd+=5;
-					startTime = new MidSMTPEOffset(hours, minutes, seconds, frames, nHundredthFrames);
-					return Optional.empty();
-				}
-			} else if(temp == 0x58) {
-				temp = (byte) midFileStream.read();
-				lengthToAdd++;
-				if(temp == 0x04) {
-					// Time signature
-					int beatsPerBar = midFileStream.read();
-					double beatUnit = midFileStream.read();
-					ts = new TimeSignature(beatUnit, beatsPerBar);
-					clocksPerMetronomeTick = midFileStream.read();
-					n32ndNotesPer24Clocks = midFileStream.read();
-					lengthToAdd+=4;
-					System.out.print("The time signature is ");
-					System.out.println(ts);
-					System.out.print("There are ");
-					System.out.print(clocksPerMetronomeTick);
-					System.out.println(" midi clocks per metronome click");
-					System.out.print("There are ");
-					System.out.print(n32ndNotesPer24Clocks);
-					System.out.println(" 32nd notes per 24 midi clocks");
-					return Optional.empty();
-				}
-			} else if(temp == 0x59) {
-				temp = (byte) midFileStream.read();
-				lengthToAdd++;
-				if(temp == 0x02) {
-					byte nSharps = (byte) midFileStream.read();
-					byte keyType = (byte) midFileStream.read();
-					lengthToAdd+=2;
-					int middleA = 440;
-					int octavesBelowMiddleA = 9;
-					int maxFrequency = 20000;
-					TwelveToneEqualTemperament twelveToneEqualTemperament = new TwelveToneEqualTemperament(
-							middleA, octavesBelowMiddleA, maxFrequency);
-					scale = twelveToneEqualTemperament;
-					/*
-					if(keyType == 0x00) {
-						// Major key
-						createMajorScale(twelveToneEqualTemperament, nSharps);
-					} else if(keyType == 0x01) {
-						// Minor key
-						createMinorScale(twelveToneEqualTemperament, nSharps);
-					}
-					 */
-					System.out.println("Scale created");
-					return Optional.empty();
-				}
-			}
+			runningStatusInvalid = true;
+			return getMetaEvent(midFileStream);
 		}
 		midFileStream.reset();
 		// TODO delete when done testing or keep for error checking
@@ -556,115 +348,271 @@ public class MidReader {
 		return null;
 	}
 
+	private static Optional<MidEvent> getPitchBendEvent(int channel, BufferedInputStream midFileStream) throws IOException {
+		byte lsb = (byte) midFileStream.read();
+		lengthToAdd++;
+		byte msb = (byte) midFileStream.read();
+		lengthToAdd++;
+		int pitchBendData = lsb | (msb << 7);
+		System.out.print("Pitch bend changed to ");
+		System.out.println(pitchBendData);
+		return Optional.of(new MidEventPitchBend(channel, pitchBendData));
+	}
+
+	private static Optional<MidEvent> getProgramChange(int channel, BufferedInputStream midFileStream) throws IOException {
+		int programNumber = midFileStream.read();
+		lengthToAdd++;
+		System.out.print("Program number changed to ");
+		System.out.println(programNumber);
+		return Optional.of(new MidEventProgramChange(channel, programNumber));
+	}
+
+	private static Optional<MidEvent> getControlChange(int channel, BufferedInputStream midFileStream) throws IOException {
+		byte temp = (byte) midFileStream.read();
+		lengthToAdd++;
+		if(temp == 0x00) {
+			// Bank Select MSB
+			bankSelectMSB = (byte) midFileStream.read();
+			lengthToAdd++;
+			System.out.println("Bank select MSB");
+			return Optional.empty();
+		} else if(temp == 0x07) {
+			// Volume change
+			int volumeOutOf127 = midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Volume changed to ");
+			System.out.print(volumeOutOf127);
+			System.out.println(" out of 127");
+			return Optional.of(new MidEventVolumeChange(channel, volumeOutOf127));
+		} else if(temp == 0x0A) { 
+			// Pan change
+			int panOutOf127 = midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Pan changed to ");
+			System.out.print(panOutOf127);
+			System.out.println(" out of 127");
+			return Optional.of(new MidEventPanChange(channel, panOutOf127));
+		} else if(temp == 0x20) {
+			// Bank select LSB
+			byte bankSelectLSB = (byte) midFileStream.read();
+			lengthToAdd++;
+			int bankSelect = (bankSelectMSB << 7) | bankSelectLSB;
+			bankSelectMSB = -1;
+			System.out.println("Bank select LSB");
+			return Optional.of(new MidEventBankSelect(channel, bankSelect));
+		} else if(temp >= 0x20 && temp <= 0x4F) {
+			// Controller number followed by 
+			// data entry LSB
+			int controllerNumber = temp & MidCs.CONTROLLER_MASK;
+			byte dataEntryLSB = (byte) midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Controller LSB is ");
+			System.out.println(dataEntryLSB);
+			return Optional.of(new MidEventDataEntryLSB(channel, controllerNumber, dataEntryLSB));
+		} else if(temp == 0x40) {
+			// Damp change
+			int dampOutOf127 = midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Damp changed to ");
+			System.out.print(dampOutOf127);
+			System.out.println(" out of 127");
+			return Optional.of(new MidEventDamp(channel, dampOutOf127));
+		} else if(temp == 0x64) {
+			// Parameter LSB
+			parameterLSB = (byte) midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Parameter lsb is ");
+			System.out.println(parameterLSB);
+			if(parameterMSB == -1) {
+				return Optional.empty();
+			}
+			return getRegisteredParameterEvent(channel);
+		} else if(temp == 0x65) {
+			// Parameter MSB
+			parameterMSB = (byte) midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Parameter msb is ");
+			System.out.println(parameterMSB);
+			if(parameterLSB == -1) {
+				return Optional.empty();
+			}
+			return getRegisteredParameterEvent(channel);
+		} else if(temp == 0x06) {
+			byte dataEntryMSB = (byte) midFileStream.read();
+			lengthToAdd++;
+			System.out.print("Data entry msb is ");
+			System.out.println(dataEntryMSB);
+			return Optional.of(new MidEventDataEntryMSB(channel, dataEntryMSB));
+		}		return null;
+	}
+
+	private static Optional<MidEvent> getNoteOnEvent(int channel, BufferedInputStream midFileStream) throws IOException {
+		int halfStepsFromMiddleC = (midFileStream.read() - 0x3C);
+		int middleCIndex = scale.middleAIndex+3;
+		int noteIndex = middleCIndex + halfStepsFromMiddleC;
+		Note note = scale.notes.get(noteIndex);
+		int velocity = midFileStream.read();
+		lengthToAdd+=2;
+		System.out.print("Note ");
+		System.out.print(note.getName());
+		System.out.print(" with velocity ");
+		System.out.print(velocity);
+		System.out.println(" was turned on");
+		return Optional.of(new MidEventNoteOn(channel, note, velocity));
+	}
+
+	private static Optional<MidEvent> getNoteOffEvent(int channel, BufferedInputStream midFileStream) throws IOException {
+		int halfStepsFromMiddleC = (midFileStream.read() - 0x3C);
+		int middleCIndex = scale.middleAIndex+3;
+		int noteIndex = middleCIndex + halfStepsFromMiddleC;
+		Note note = scale.notes.get(noteIndex);
+		int velocity = midFileStream.read();
+		lengthToAdd+=2;
+		System.out.print("Note ");
+		System.out.print(note.getName());
+		System.out.print(" was turned off");
+		System.out.print(" with velocity ");
+		System.out.println(velocity);
+		return Optional.of(new MidEventNoteOff(channel, note, velocity));
+	}
+
+	private static Optional<MidEvent> getMetaEvent(BufferedInputStream midFileStream) throws IOException {
+		// Event type
+		byte temp = (byte) midFileStream.read();
+		long length = getVariableLengthQuantity(midFileStream);
+		long tempLengthToAdd = lengthToAdd;
+		lengthToAdd += tempLengthToAdd;
+		lengthToAdd++;
+		Optional<MidEvent> optional = null;
+		if(temp == 0x00) {
+			// TODO sequence number
+		} else if(temp == 0x01) {
+			// TODO text event
+		} else if(temp == 0x02) {
+			// TODO copyright notice
+		} else if(temp == 0x05) {
+			// TODO lyric event
+		} else if(temp == 0x06) {
+			// TODO marker event
+		} else if(temp == 0x07) {
+			// TODO cue point event
+		} else if(temp == 0x03 ||temp == 0x04 || temp == 0x09) {
+			// String events
+			int tempChar;
+			StringBuilder sb = new StringBuilder();
+			for(int i = 0; i < length; i++) {
+				tempChar = midFileStream.read();
+				lengthToAdd++;
+				length--;
+				sb.append((char)tempChar);
+			}
+			if(temp == 0x03) {
+				System.out.print("Track name is ");
+				System.out.println(sb);
+				optional = Optional.of(new MidEventTrackName(sb.toString()));
+			} else if(temp == 0x04) {
+				System.out.print("Instrument name is ");
+				System.out.println(sb);
+				optional = Optional.of(new MidEventInstrumentName(sb.toString()));
+			} else if(temp == 0x09) {
+				System.out.print("Device name is ");
+				System.out.println(sb);
+				optional = Optional.of(new MidEventDeviceName(sb.toString()));
+			}
+		} else if(temp == 0x20) {
+			// TODO channel prefix event
+		} else if(temp == 0x2F) {
+			System.out.println("End of track");
+			optional = Optional.of(new MidEventEndOfTrack());
+		} else if(temp == 0x51) {
+			// Tempo
+			byte[] uSecPerQuarterNoteBytes = new byte[3];
+			midFileStream.read(uSecPerQuarterNoteBytes);
+			lengthToAdd+=3;
+			length-=3;
+			byte[] uSecPerQuarterNoteBytesBytesInt = new byte[4];
+			uSecPerQuarterNoteBytesBytesInt[0] = 0x00;
+			uSecPerQuarterNoteBytesBytesInt[1] = uSecPerQuarterNoteBytes[0];
+			uSecPerQuarterNoteBytesBytesInt[2] = uSecPerQuarterNoteBytes[1];
+			uSecPerQuarterNoteBytesBytesInt[3] = uSecPerQuarterNoteBytes[2];
+			ByteBuffer bb = ByteBuffer.wrap(uSecPerQuarterNoteBytesBytesInt);
+			double beatsPerMinute = (60000000.0/((double)(bb.getInt())));
+			if(tempo == null) {
+				tempo = new Tempo(beatsPerMinute);
+			}
+			System.out.println(tempo);
+			optional = Optional.empty();
+		} else if(temp == 0x54) {
+			int hours = midFileStream.read();
+			int minutes = midFileStream.read();
+			int seconds  = midFileStream.read();
+			int frames = midFileStream.read();
+			int nHundredthFrames = midFileStream.read();
+			lengthToAdd+=5;
+			length-=5;
+			System.out.print("Track starts at ");
+			System.out.print(hours);
+			System.out.print(":");
+			System.out.print(minutes);
+			System.out.print(":");
+			System.out.print(seconds);
+			System.out.print(":");
+			System.out.print(frames);
+			System.out.print(":");
+			System.out.println(nHundredthFrames);
+			startTime = new MidSMTPEOffset(hours, minutes, seconds, frames, nHundredthFrames);
+			optional = Optional.empty();
+		} else if(temp == 0x58) {
+			// Time signature
+			int beatsPerBar = midFileStream.read();
+			double beatUnit = midFileStream.read();
+			ts = new TimeSignature(Math.pow(2.0, beatUnit), beatsPerBar);
+			clocksPerMetronomeTick = midFileStream.read();
+			n32ndNotesPer24Clocks = midFileStream.read();
+			lengthToAdd+=4;
+			length-=4;
+			System.out.print("The time signature is ");
+			System.out.println(ts);
+			System.out.print("There are ");
+			System.out.print(clocksPerMetronomeTick);
+			System.out.println(" midi clocks per metronome click");
+			System.out.print("There are ");
+			System.out.print(n32ndNotesPer24Clocks);
+			System.out.println(" 32nd notes per 24 midi clocks");
+			optional = Optional.empty();
+		} else if(temp == 0x59) {
+			byte nSharps = (byte) midFileStream.read();
+			byte keyType = (byte) midFileStream.read();
+			lengthToAdd+=2;
+			length-=2;
+			int middleA = 440;
+			int octavesBelowMiddleA = 9;
+			int maxFrequency = 20000;
+			TwelveToneEqualTemperament twelveToneEqualTemperament = new TwelveToneEqualTemperament(
+					middleA, octavesBelowMiddleA, maxFrequency);
+			scale = twelveToneEqualTemperament;
+			System.out.println("Scale created");
+			optional = Optional.empty();
+		} else if(temp == 0x7F) {
+			// TODO Seqeuncer specific
+			// See manufacturers published codes
+		}
+		while(length > 0) {
+			midFileStream.read();
+			length--;
+		}
+		return optional;
+	}
+
 	private static Optional<MidEvent> getRegisteredParameterEvent(int channel) {
-		if(parameterMSB == 0) {
-			if(parameterLSB == 0) {
+		if(parameterMSB == 0x00) {
+			if(parameterLSB == 0x00) {
 				parameterMSB = -1;
 				parameterLSB = -1;
 				return Optional.of(new MidEventPitchBendSensitivity(channel));
 			}
 		}
 		return null;
-	}
-
-	private static void createMinorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, byte nSharps) {
-		switch(nSharps) {
-		case -7 :
-			scale = new MinorScale(twelveToneEqualTemperament, "G#");
-			break;
-		case -6 :
-			scale = new MinorScale(twelveToneEqualTemperament, "D#");
-			break;
-		case -5 :
-			scale = new MinorScale(twelveToneEqualTemperament, "A#");
-			break;
-		case -4 :
-			scale = new MinorScale(twelveToneEqualTemperament, "F");
-			break;
-		case -3 :
-			scale = new MinorScale(twelveToneEqualTemperament, "C");
-			break;
-		case -2 :
-			scale = new MinorScale(twelveToneEqualTemperament, "G");
-			break;
-		case -1 :
-			scale = new MinorScale(twelveToneEqualTemperament, "D");
-			break;
-		case 0 :
-			scale = new MinorScale(twelveToneEqualTemperament, "A");
-			break;
-		case 1 :
-			scale = new MinorScale(twelveToneEqualTemperament, "E");
-			break;
-		case 2 :
-			scale = new MinorScale(twelveToneEqualTemperament, "B");
-			break;
-		case 3 :
-			scale = new MinorScale(twelveToneEqualTemperament, "F#");
-			break;
-		case 4 :
-			scale = new MinorScale(twelveToneEqualTemperament, "C#");
-			break;
-		case 5 :
-			scale = new MinorScale(twelveToneEqualTemperament, "G#");
-			break;
-		case 6 :
-			scale = new MinorScale(twelveToneEqualTemperament, "D#");
-			break;
-		case 7 :
-			scale = new MinorScale(twelveToneEqualTemperament, "A#");
-			break;
-		}
-	}
-
-	private static void createMajorScale(TwelveToneEqualTemperament twelveToneEqualTemperament, byte nSharps) {
-		switch(nSharps) {
-		case -7 :
-			scale = new MajorScale(twelveToneEqualTemperament, "B");
-			break;
-		case -6 :
-			scale = new MajorScale(twelveToneEqualTemperament, "F");
-			break;
-		case -5 :
-			scale = new MajorScale(twelveToneEqualTemperament, "C");
-			break;
-		case -4 :
-			scale = new MajorScale(twelveToneEqualTemperament, "G#");
-			break;
-		case -3 :
-			scale = new MajorScale(twelveToneEqualTemperament, "D#");
-			break;
-		case -2 :
-			scale = new MajorScale(twelveToneEqualTemperament, "A#");
-			break;
-		case -1 :
-			scale = new MajorScale(twelveToneEqualTemperament, "F");
-			break;
-		case 0 :
-			scale = new MajorScale(twelveToneEqualTemperament, "C");
-			break;
-		case 1 :
-			scale = new MajorScale(twelveToneEqualTemperament, "G");
-			break;
-		case 2 :
-			scale = new MajorScale(twelveToneEqualTemperament, "D");
-			break;
-		case 3 :
-			scale = new MajorScale(twelveToneEqualTemperament, "A");
-			break;
-		case 4 :
-			scale = new MajorScale(twelveToneEqualTemperament, "E");
-			break;
-		case 5 :
-			scale = new MajorScale(twelveToneEqualTemperament, "B");
-			break;
-		case 6 :
-			scale = new MajorScale(twelveToneEqualTemperament, "F#");
-			break;
-		case 7 :
-			scale = new MajorScale(twelveToneEqualTemperament, "C#");
-			break;
-		}
 	}
 
 	public static long getVariableLengthQuantity(BufferedInputStream midFileStream) throws IOException {

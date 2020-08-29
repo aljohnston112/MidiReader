@@ -10,19 +10,19 @@ import midFileBuilder.MidHeaderBuilder.Format;
 public final class MidHeader extends MidChunk {
 	
 	// The format of the midi file
-	final Format format;
+	public final Format format;
 	
 	// The number of tracks in the midi file
-	final int nTracks;
+	public final int nTracks;
 	
 	// True when format is drop frame 
-	final boolean isDropFrame;
+	public final boolean isDropFrame;
 	
 	// If true then midi is in ticksPerSeconds else ticksPerQuarterNote
-	final boolean isSeconds;
+	public final boolean isSeconds;
 	
 	// If isSeconds then ticksPerSeconds else ticksPerQuarterNote
-	final int ticksPer;
+	public final int ticksPer;
 	
 	/**       Creates a midi header.
 	 * @param format as the format of the midi header.
