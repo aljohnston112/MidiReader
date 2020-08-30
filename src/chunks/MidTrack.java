@@ -42,49 +42,106 @@ public class MidTrack extends MidChunk {
 	}
 
 	public ThreeDimensionalNoteArray getTrack(double ticksPerSecond) {
-		ThreeDimensionalNoteArray tracks = new ThreeDimensionalNoteArray();
-		List<ArrayList<TimedNote>> tempTracks = new ArrayList<>();
-		Map<Integer, Long> currentTicks = new HashMap<>();
-		Map<Integer, MidEventNoteOn> currentNotes = new HashMap<>();
-		Map<Integer, Boolean> inUse = new HashMap<>();
+		ThreeDimensionalNoteArray notesOut = new ThreeDimensionalNoteArray();
+		Map<Integer, ArrayList<MidEventNoteOn>> channelToNoteOn = new HashMap<>();
+		Map<Integer, ArrayList<Long>> channelToTicks = new HashMap<>();
+		Map<Integer, ArrayList<ArrayList<TimedNote>>> channelToTimedNotes = new HashMap<>();
+		long runningTicks = 0;
 		for(MidEvent me : events) {
-			long ticks = me.getTicksFromLastEvent();
-			for(Entry<Integer, Long> e : currentTicks.entrySet()) {
-				currentTicks.put(e.getKey(), e.getValue()+ticks);
+			// Add ticks
+			runningTicks+=me.getTicksFromLastEvent();
+			for(Entry<Integer, ArrayList<MidEventNoteOn>> e : channelToNoteOn.entrySet()) {
+				for(int i = 0; i < e.getValue().size(); i++) {
+					long ticks = me.getTicksFromLastEvent();
+					int tempChannel = e.getKey();
+					channelToTicks.get(tempChannel).set(i ,channelToTicks.get(tempChannel).get(i)+ticks);
+				}
 			}
+			// Note on events
 			if(me instanceof MidEventNoteOn && ((MidEventNoteOn)me).velocity != 0) {
+				int channel = ((MidEventNoteOn)me).channel;
+				if(channelToNoteOn.get(channel) == null) {
+					channelToNoteOn.put(channel, new ArrayList<MidEventNoteOn>());
+				}
+				if(channelToTicks.get(channel) == null) {
+					channelToTicks.put(channel, new ArrayList<Long>());
+				}
+				if(channelToTimedNotes.get(channel) == null) {
+					channelToTimedNotes.put(channel, new ArrayList<ArrayList<TimedNote>>());
+				}
 				int index = -1;
-				int i = 0;
-				while(index == -1) {
-					if(inUse.get(i) == null || !inUse.get(i)) {
+				for(int i = 0; i < channelToNoteOn.get(channel).size(); i++) {
+					if(channelToNoteOn.get(channel).get(i) == null) {
 						index = i;
 					}
-					i++;
 				}
-				currentNotes.put(index, (MidEventNoteOn)me);		
-				currentTicks.put(index, 0L);
-				inUse.put(index, true);
-			} else if(me instanceof MidEventNoteOff ||
-					(me instanceof MidEventNoteOn && ((MidEventNoteOn)me).velocity == 0)) {
-				int index = 0;
-				while(index < inUse.size() && inUse.get(index)) {
-						index++;
+				MidEventNoteOn tme = null;
+				if(index == -1) {
+					channelToNoteOn.get(channel).add((MidEventNoteOn)me);
+					index = channelToNoteOn.get(channel).size()-1;
+				} else {
+					tme = channelToNoteOn.get(channel).get(index);
+					channelToNoteOn.get(channel).set(index, (MidEventNoteOn)me);
 				}
-				index--;
-				MidEventNoteOn noe = currentNotes.get(index);	
-				double time = currentTicks.get(index)/ticksPerSecond;
-				while(index+1 > tempTracks.size()) {
-					tempTracks.add(new ArrayList<TimedNote>());
+				double time = 0;
+				while(channelToTicks.get(channel).size() < (index+1)) {
+					channelToTicks.get(channel).add(runningTicks);
 				}
-				tempTracks.get(index).add(new TimedNote(noe.note, time, noe.velocity));
-				inUse.put(index, false);
+				while(channelToTimedNotes.get(channel).size() < (index+1)) {
+					channelToTimedNotes.get(channel).add(new ArrayList<TimedNote>());
+				}
+				time = channelToTicks.get(channel).get(index)/ticksPerSecond;
+				if(me.getTicksFromLastEvent() != 0 && tme == null) {
+					channelToTimedNotes.get(channel).get(index).add(new TimedNote(new Note(0), time, 0));
+				} else if(me.getTicksFromLastEvent() != 0){
+					channelToTimedNotes.get(channel).get(index).add(new TimedNote(tme.note, time, 0));
+				}
+				channelToTicks.get(channel).set(index, 0L);
+			} 
+			// Note off events
+			else if(me instanceof MidEventNoteOn && ((MidEventNoteOn)me).velocity == 0) {
+				int channel = ((MidEventNoteOn)me).channel;
+				int index = -1;
+				for(int i = 0; i < channelToNoteOn.get(channel).size(); i++) {
+					if(channelToNoteOn.get(channel).get(i).equals(((MidEventNoteOn)me))) {
+						index = i;
+					}
+				}
+				if(index == -1) {
+					throw new IllegalArgumentException("Note off didn't have a preceeding note on");
+				}
+				double time = channelToTicks.get(channel).get(index)/ticksPerSecond;
+				channelToTimedNotes.get(channel).get(index).add(
+						new TimedNote(channelToNoteOn.get(channel).get(index).note, time, 0));
+				channelToNoteOn.get(channel).set(index, null);
+				channelToTicks.get(channel).set(index, 0L);
+			} else if(me instanceof MidEventNoteOff) {
+				int channel = ((MidEventNoteOff)me).channel;
+				int index = -1;
+				for(int i = 0; i < channelToNoteOn.get(channel).size(); i++) {
+					if(channelToNoteOn.get(channel).get(i) != null) {
+						if(channelToNoteOn.get(channel).get(i).equals(((MidEventNoteOff)me))) {
+							index = i;
+						}
+					}
+				}
+				if(index == -1) {
+					throw new IllegalArgumentException("Note off didn't have a preceeding note on");
+				}
+				double time = channelToTicks.get(channel).get(index)/ticksPerSecond;
+				channelToTimedNotes.get(channel).get(index).add(
+						new TimedNote(channelToNoteOn.get(channel).get(index).note, time, 0));
+				channelToNoteOn.get(channel).set(index, null);
+				channelToTicks.get(channel).set(index, 0L);
 			}
-			
+
 		}
-		for(ArrayList<TimedNote> a : tempTracks) {
-			tracks.addTrack(a);
+		for(int channel = 0; channel < channelToTimedNotes.size(); channel++) {
+			for(ArrayList<TimedNote> a : channelToTimedNotes.get(channel)) {
+				notesOut.addTrack(a);
+			}
 		}
-		return tracks;
+		return notesOut;
 	}
 
 }

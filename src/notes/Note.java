@@ -27,7 +27,6 @@ public class Note {
 		return hertz;
 	}
 
-
 	/**       Creates a note
 	 * @param name The name of this note
 	 * @param hertz The frequency of this note
@@ -42,6 +41,15 @@ public class Note {
 	 */
 	public Note(double hertz) {
 		this.hertz = hertz;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if((o instanceof Note) && (((Note)o).hertz == this.hertz) && (((Note)o).name.equals(this.name))) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 }

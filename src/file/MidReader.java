@@ -400,13 +400,15 @@ public class MidReader {
 			bankSelectMSB = -1;
 			System.out.println("Bank select LSB");
 			return Optional.of(new MidEventBankSelect(channel, bankSelect));
-		} else if(temp >= 0x20 && temp <= 0x4F) {
+		} else if(temp >= 0x20 && temp <= 0x3F) {
 			// Controller number followed by 
 			// data entry LSB
 			int controllerNumber = temp & MidCs.CONTROLLER_MASK;
 			byte dataEntryLSB = (byte) midFileStream.read();
 			lengthToAdd++;
-			System.out.print("Controller LSB is ");
+			System.out.print("Controller number ");
+			System.out.print(controllerNumber);
+			System.out.print(" set to ");
 			System.out.println(dataEntryLSB);
 			return Optional.of(new MidEventDataEntryLSB(channel, controllerNumber, dataEntryLSB));
 		} else if(temp == 0x40) {
@@ -500,7 +502,8 @@ public class MidReader {
 			// String events
 			int tempChar;
 			StringBuilder sb = new StringBuilder();
-			for(int i = 0; i < length; i++) {
+			long tl = length;
+			for(int i = 0; i < tl; i++) {
 				tempChar = midFileStream.read();
 				lengthToAdd++;
 				length--;
@@ -540,7 +543,9 @@ public class MidReader {
 			if(tempo == null) {
 				tempo = new Tempo(beatsPerMinute);
 			}
-			System.out.println(tempo);
+			System.out.print("Tempo at ");
+			System.out.print(beatsPerMinute);
+			System.out.println(" bpm");
 			optional = Optional.empty();
 		} else if(temp == 0x54) {
 			int hours = midFileStream.read();
@@ -598,6 +603,7 @@ public class MidReader {
 			// See manufacturers published codes
 		}
 		while(length > 0) {
+			System.out.println("Skipping unknown data");
 			midFileStream.read();
 			length--;
 		}
@@ -609,6 +615,7 @@ public class MidReader {
 			if(parameterLSB == 0x00) {
 				parameterMSB = -1;
 				parameterLSB = -1;
+				System.out.println("Pitch bend sensitivity event");
 				return Optional.of(new MidEventPitchBendSensitivity(channel));
 			}
 		}

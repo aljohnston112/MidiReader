@@ -20,4 +20,17 @@ public final class MidEventNoteOn extends MidEvent {
 		this.velocity = velocity;
 	}
 	
+	@Override
+	public boolean equals(Object o) {
+		if((o instanceof MidEventNoteOn && ((MidEventNoteOn)o).channel == this.channel && 
+				((MidEventNoteOn)o).note.equals(this.note))){
+			return true;
+		} if((o instanceof MidEventNoteOff && ((MidEventNoteOff)o).channel == this.channel && 
+				((MidEventNoteOff)o).note.equals(this.note))){
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
 }
