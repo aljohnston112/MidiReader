@@ -111,8 +111,10 @@ public class MidTrack extends MidChunk {
 					throw new IllegalArgumentException("Note off didn't have a preceeding note on");
 				}
 				double time = channelToTicks.get(channel).get(index)/ticksPerSecond;
+				
 				channelToTimedNotes.get(channel).get(index).add(
-						new TimedNote(channelToNoteOn.get(channel).get(index).note, time, 0));
+						new TimedNote(channelToNoteOn.get(channel).get(index).note, time, 
+								channelToNoteOn.get(channel).get(index).velocity));
 				channelToNoteOn.get(channel).set(index, null);
 				channelToTicks.get(channel).set(index, 0L);
 			} else if(me instanceof MidEventNoteOff) {
@@ -130,7 +132,8 @@ public class MidTrack extends MidChunk {
 				}
 				double time = channelToTicks.get(channel).get(index)/ticksPerSecond;
 				channelToTimedNotes.get(channel).get(index).add(
-						new TimedNote(channelToNoteOn.get(channel).get(index).note, time, 0));
+						new TimedNote(channelToNoteOn.get(channel).get(index).note, time, 
+								channelToNoteOn.get(channel).get(index).velocity));
 				channelToNoteOn.get(channel).set(index, null);
 				channelToTicks.get(channel).set(index, 0L);
 			}
