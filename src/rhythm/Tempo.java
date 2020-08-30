@@ -42,11 +42,11 @@ public class Tempo {
 	public double quantize(double time) {
 		ArrayList<Double> noteTimes = new ArrayList<>();
 		int i = 0;
-		while((this.noteTimes[1]*(double)i) < time) {
-			noteTimes.add((this.noteTimes[1]*(double)i));
+		while((this.noteTimes[5]*(double)i) < time) {
+			noteTimes.add((this.noteTimes[5]*(double)i));
 			i++;
 		}
-		noteTimes.add((this.noteTimes[1]*(double)i));
+		noteTimes.add((this.noteTimes[5]*(double)i));
 		double dif1 = Math.abs(noteTimes.get(noteTimes.size()-1)-time);
 		double dif2 = Math.abs(noteTimes.get(noteTimes.size()-2)-time);
 		if(dif1 < dif2) {

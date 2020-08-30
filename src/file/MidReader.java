@@ -199,6 +199,7 @@ public class MidReader {
 		MidFile mf = midBuilder.build();
 		ThreeDimensionalNoteArray b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
 		b.quantize(tempo, new Dynamics(127));
+		b.homogenize();
 		System.out.println("File has been built");
 	}
 

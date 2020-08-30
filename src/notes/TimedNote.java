@@ -14,4 +14,14 @@ public final class TimedNote {
 		this.velocity = velocity;
 	}
 	
+	@Override
+	public boolean equals(Object o) {
+		if((o instanceof TimedNote) && (((TimedNote)o).time == this.time) && 
+				(((TimedNote)o).velocity == (this.velocity)) && (((TimedNote)o).note.equals(this.note))) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
 }
