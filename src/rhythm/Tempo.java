@@ -1,5 +1,8 @@
 package rhythm;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+
 /**
 @author Alexander Johnston 
         Copyright 2019 
@@ -9,7 +12,7 @@ public class Tempo {
 
 	// The time interval of the quarter note in seconds
 	private double beatsPerMinute;
-	
+
 	public double[] noteTimes = new double[16];
 
 	/**
@@ -34,6 +37,23 @@ public class Tempo {
 		noteTimes[2] = quarterNote*4.0/96.0;
 		noteTimes[1] = quarterNote/32.0;
 		noteTimes[0] = quarterNote*4.0/192.0;
+	}
+
+	public double quantize(double time) {
+		ArrayList<Double> noteTimes = new ArrayList<>();
+		int i = 0;
+		while((this.noteTimes[1]*(double)i) < time) {
+			noteTimes.add((this.noteTimes[1]*(double)i));
+			i++;
+		}
+		noteTimes.add((this.noteTimes[1]*(double)i));
+		double dif1 = Math.abs(noteTimes.get(noteTimes.size()-1)-time);
+		double dif2 = Math.abs(noteTimes.get(noteTimes.size()-2)-time);
+		if(dif1 < dif2) {
+			return noteTimes.get(noteTimes.size()-1);
+		} else {
+			return noteTimes.get(noteTimes.size()-2);
+		}
 	}
 
 	/**
@@ -155,5 +175,5 @@ public class Tempo {
 		sb.append("bpm");
 		return sb.toString();
 	}
-	
+
 }

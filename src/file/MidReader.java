@@ -12,6 +12,7 @@ import java.util.Optional;
 import javax.activation.UnsupportedDataTypeException;
 
 import chunks.MidChunk.ChunkType;
+import dynamics.Dynamics;
 import events.MidEventDamp;
 import events.MidEventDataEntryLSB;
 import events.MidEventDataEntryMSB;
@@ -197,6 +198,7 @@ public class MidReader {
 		}
 		MidFile mf = midBuilder.build();
 		ThreeDimensionalNoteArray b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
+		b.quantize(tempo, new Dynamics(127));
 		System.out.println("File has been built");
 	}
 
