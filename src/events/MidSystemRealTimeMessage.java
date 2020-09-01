@@ -1,5 +1,5 @@
 package events;
 
-public class MidSystemRealTimeMessage extends MidSystemMessage {
+public abstract class MidSystemRealTimeMessage extends MidSystemMessage {
 
 }

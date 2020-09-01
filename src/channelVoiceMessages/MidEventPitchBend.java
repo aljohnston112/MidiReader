@@ -9,11 +9,6 @@ public final class MidEventPitchBend extends MidChannelVoiceEvent {
 	// 8192 means no bend
 	// 16,383 is the max bend
 	public final int value;
-		
-	private MidEventPitchBend() {
-		super(-1);
-		throw new AssertionError("Default MidEventPitchBend constructor is unsupported");
-	}
 	
 	public MidEventPitchBend(int channel, int value) {
 		super(channel);

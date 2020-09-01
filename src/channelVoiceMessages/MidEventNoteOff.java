@@ -2,7 +2,6 @@ package channelVoiceMessages;
 
 import java.io.ByteArrayOutputStream;
 
-import events.MidEvent;
 import notes.Note;
 import notes.Scale;
 
@@ -13,11 +12,6 @@ public final class MidEventNoteOff extends MidChannelVoiceEvent {
 	public final int velocity;
 	
 	public final Scale scale;
-
-	private MidEventNoteOff() {
-		super(-1);
-		throw new AssertionError("Default MidNoteOffEvent constructor is unsupported");
-	}
 
 	public MidEventNoteOff(int channel, Note note, int velocity, Scale s) {
 		super(channel);

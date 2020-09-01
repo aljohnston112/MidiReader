@@ -5,11 +5,6 @@ import java.io.ByteArrayOutputStream;
 public final class MidEventProgramChange extends MidChannelVoiceEvent {
 
 	public final int programNumber;
-		
-	private MidEventProgramChange() {
-		super(-1);
-		throw new AssertionError("Default MidEventProgramChange constructor is unsupported");
-	}
 	
 	public MidEventProgramChange(int channel, int programNumber) {
 		super(channel);

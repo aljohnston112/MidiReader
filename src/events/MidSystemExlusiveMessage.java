@@ -1,5 +1,5 @@
 package events;
 
-public class MidSystemExlusiveMessage extends MidSystemMessage {
+public abstract class MidSystemExlusiveMessage extends MidSystemMessage {
 
 }
