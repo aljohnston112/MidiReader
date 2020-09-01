@@ -17,6 +17,8 @@ public class Scale {
 
 	// Last index below 20hz
 	public int subHertzIndex;
+	
+	public int middleCIndex;
 
 	// The tonic
 	String tonicLetter;
@@ -36,6 +38,23 @@ public class Scale {
 	 */
 	protected void addNoteAndName(int j, int i, TwelveToneEqualTemperament twelveToneEqualTemperament) {
 		notes.set(j, new Note(twelveToneEqualTemperament.notes.get(i).getName(), twelveToneEqualTemperament.notes.get(i).getFrequency()));
+	}
+	
+	public int getIndexForFrequency(double f) {
+		int i = 0;
+		while(i < notes.size() && notes.get(i).getFrequency() < f) {
+			i++;
+		}
+		if(i == 0) {
+			return 0;
+		}
+		double s0 = Math.abs(notes.get(i).getFrequency() - f);
+		double s1 = Math.abs(notes.get(i-1).getFrequency() - f);
+		if(s0 < s1) {
+			return i;
+		} else {
+			return i-1;
+		}
 	}
 
 }

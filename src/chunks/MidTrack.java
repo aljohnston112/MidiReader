@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import channelVoiceMessages.MidEventNoteOff;
+import channelVoiceMessages.MidEventNoteOn;
 import events.MidEvent;
-import events.MidEventNoteOff;
-import events.MidEventNoteOn;
 import notes.Note;
 import notes.ThreeDimensionalNoteArray;
 import notes.TimedNote;
@@ -21,13 +21,13 @@ import notes.TimedNote;
 public class MidTrack extends MidChunk {
 
 	// The midi events
-	final List<MidEvent> events;
+	public final List<MidEvent> events;
 
-	final String trackName;
+	public final String trackName;
 
-	final String instrumentName;
+	public final String instrumentName;
 
-	final String deviceName;
+	public final String deviceName;
 
 	/**       Creates a midi track.
 	 * @param length as the length of the midi track in bytes.

@@ -1,7 +1,7 @@
 package midFileBuilder;
 
 import chunks.MidHeader;
-import file.MidCs;
+import midiFile.MidCs;
 
 /** MidHeaderBuilder is used to build MidiHeader objects.
  *  @author Alexander Johnston
@@ -28,9 +28,11 @@ public class MidHeaderBuilder extends MidChunkBuilder {
 	// If true then midi is in ticksPerSeconds else ticksPerQuarterNote
 	private boolean isSeconds = false;
 
-	// If isSeconds then ticksPerSeconds else ticksPerQuarterNote
+	// If isSeconds then ticksPerFrame else ticksPerQuarterNote
 	private int ticksPer = -1;
 	
+	private int frameRate = -1;
+		
 	/**       Sets the format of the MidHeader to be built.
 	 * @param format as the format of the MidHeader.
 	 */
@@ -65,31 +67,34 @@ public class MidHeaderBuilder extends MidChunkBuilder {
 	public void setDivision(int division) {
 		if((division & MidCs.DIVISION_SMTPE_MASK) == MidCs.DIVISION_SMTPE_MASK){
 			isSeconds = true;
-			byte framesPerSecond = (byte) ((division & ~MidCs.DIVISION_SMTPE_MASK) >> 
+			byte frameFormat = (byte) ((division & ~MidCs.DIVISION_SMTPE_MASK) >> 
 					MidCs.DIVISION_SMTPE_FRAMES_PER_SEC_SHIFT);
 			
-			switch(framesPerSecond) {
+			switch(frameFormat) {
 			case MidCs.DIVISION_SMTPE_FRAMES_PER_SEC_24 :
-				framesPerSecond = 24;
+				frameRate = 24;
 				break;
 			case MidCs.DIVISION_SMTPE_FRAMES_PER_SEC_25 :
-				framesPerSecond = 25;
+				frameRate = 25;
 				break;
 			case MidCs.DIVISION_SMTPE_FRAMES_PER_SEC_30_DROP_FRAME :
-				framesPerSecond = 30;
+				frameRate = 30;
 				isDropFrame = true;
 				break;
 			case MidCs.DIVISION_SMTPE_FRAMES_PER_SEC_30 :
-				framesPerSecond = 30;
+				frameRate = 30;
 				break;
 			default :
 				throw new IllegalArgumentException("The int passed to setDivision is invalid");
 			}
 			short ticksPerFrame = (short) (division & MidCs.DIVISION_SMTPE_TICK_PER_FRAME_MASK);
-			ticksPer = ticksPerFrame*framesPerSecond;
+			ticksPer = ticksPerFrame;
 			System.out.print("Header has ");
 			System.out.print(ticksPer);
-			System.out.println(" ticks per second");
+			System.out.print(" ticks per frame");
+			System.out.print("With a frame rate of ");
+			System.out.print(frameRate);
+			System.out.print(" frames per second");
 		} else {
 			isSeconds = false;
 			ticksPer = division;
@@ -117,7 +122,7 @@ public class MidHeaderBuilder extends MidChunkBuilder {
 		if(ticksPer == -1) { 
 			throw new IllegalArgumentException("The division for the MidHeader has not been set");
 		}
-		return new MidHeader(format, nTracks, isDropFrame, isSeconds, ticksPer, length);
+		return new MidHeader(format, nTracks, isDropFrame, isSeconds, ticksPer, frameRate, length);
 	}
 
 }

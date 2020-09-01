@@ -18,6 +18,7 @@ public class Dynamics {
 	 * @param amplitude as the max amplitude
 	 */
 	public Dynamics(double amplitude) {
+		// TODO Volume should be an exponential function of velocity
 		dynamics[0] = amplitude;
 		dynamics[1] = amplitude * 112.0/127.0;
 		dynamics[2] = amplitude * 96.0/127.0;

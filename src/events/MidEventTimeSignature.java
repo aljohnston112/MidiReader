@@ -4,7 +4,7 @@ import rhythm.TimeSignature;
 
 public final class MidEventTimeSignature extends MidEvent {
 
-	final TimeSignature ts;
+	public final TimeSignature ts;
 		
 	private MidEventTimeSignature() {
 		throw new AssertionError("Default MidEventTimeSignature constructor is unsupported");

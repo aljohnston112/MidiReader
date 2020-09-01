@@ -16,6 +16,7 @@ public class TwelveToneEqualTemperament extends EqualTemperament {
 	 */
 	public TwelveToneEqualTemperament(double middleA, int octavesUnderMiddleA, float maxFrequency) {
 		super(middleA, 12, octavesUnderMiddleA, maxFrequency);
+		middleCIndex = middleAIndex + 3;
 	}
 
 	/** Adds note names for 12-TET (A, A#, B, C, C#, D, D#, E, F, F#, G, G#)

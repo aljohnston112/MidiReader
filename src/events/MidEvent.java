@@ -12,4 +12,6 @@ public abstract class MidEvent {
 		return ticksFromLastEvent;
 	}
 	
+	// TODO abstract byte[] getEvent()
+	
 }

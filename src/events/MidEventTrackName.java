@@ -2,7 +2,7 @@ package events;
 
 public class MidEventTrackName extends MidEvent {
 	
-	final String name;
+	public final String name;
 	
 	private MidEventTrackName() {
 		throw new AssertionError("Default MidEventTrackName constructor is unsupported");

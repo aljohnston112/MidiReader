@@ -2,7 +2,7 @@ package events;
 
 public class MidEventDeviceName extends MidEvent {
 	
-	final String name;
+	public final String name;
 	
 	private MidEventDeviceName() {
 		throw new AssertionError("Default MidEventDeviceName constructor is unsupported");

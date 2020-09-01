@@ -5,8 +5,8 @@ import java.util.List;
 
 import chunks.MidHeader;
 import chunks.MidTrack;
-import file.MidFile;
-import file.MidSMTPEOffset;
+import midiFile.MidFile;
+import midiFile.MidSMTPEOffset;
 import rhythm.Tempo;
 import rhythm.TimeSignature;
 
