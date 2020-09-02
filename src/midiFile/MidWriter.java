@@ -10,7 +10,7 @@ import midFileBuilder.MidHeaderBuilder.Format;
 
 public class MidWriter {
 
-	public static byte[] variableLengthQuantity(int vlq) {
+	public static byte[] variableLengthQuantity(long vlq) {
 		int max = 0xFFFFFFF;
 		if(vlq > max || vlq < 0) {
 			throw new IllegalArgumentException("int passed to variableLengthQuantity is out of range");
@@ -112,9 +112,9 @@ public class MidWriter {
 			length+=b.length;
 		}
 		byte[] lengthB = new byte[4];
-		lengthB[0] = (byte) ((length & (0b11111111 << 21)) >> 21);
-		lengthB[1] = (byte) ((length & (0b11111111 << 14)) >> 14);
-		lengthB[2] = (byte) ((length & (0b11111111 << 7)) >> 7);
+		lengthB[0] = (byte) ((length & (0b11111111 << 24)) >> 24);
+		lengthB[1] = (byte) ((length & (0b11111111 << 16)) >> 16);
+		lengthB[2] = (byte) ((length & (0b11111111 << 8)) >> 8);
 		lengthB[3] = (byte) (length & 0b11111111);
 		baos.write(lengthB);
 		baos.write(baosEvents.toByteArray());

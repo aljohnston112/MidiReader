@@ -170,10 +170,8 @@ public class MidReader {
 				}
 				midBuilder.setHeader(((MidHeaderBuilder) chunkBuilder).build());
 			} else if(chunkBuilder instanceof MidTrackBuilder) {
-				long runningTicks = 0;
 				while(length < chunkBuilder.getLength()) {
 					long ticks = getVariableLengthQuantity(midFileStream);
-					runningTicks+=ticks;
 					length += lengthToAdd;
 					System.out.print("Track's next event is ");
 					System.out.print(ticks);
@@ -181,7 +179,6 @@ public class MidReader {
 					MidEvent event = getEvent(midFileStream).orElse(null);
 					if(event != null) {
 						event.setTicksFromLastEvent(ticks);
-						runningTicks = 0;
 					}
 					length += lengthToAdd;
 					if(event == null) {
@@ -655,26 +652,17 @@ public class MidReader {
 		byte tempByte = (byte) midFileStream.read();
 		lengthToAdd++;
 		while((tempByte & MidCs.VAR_LENGTH_QUANTITY_MASK) == MidCs.VAR_LENGTH_QUANTITY_MASK) {
-			tempByte = (byte) (tempByte & ~MidCs.VAR_LENGTH_QUANTITY_MASK);
+			tempByte = (byte) (tempByte & (~MidCs.VAR_LENGTH_QUANTITY_MASK));
 			tempBytes.add(tempByte);
 			tempByte = (byte) midFileStream.read();
 			lengthToAdd++;
 		}
 		tempBytes.add(tempByte);
-		byte[] vlq = new byte[tempBytes.size()];
-		int i = 0;
-		for(byte b : tempBytes) {
-			vlq[i++] = b;
+		long l = 0;
+		for(int i = 0; i < tempBytes.size(); i++) {
+			l = (l | tempBytes.get(0) << (7*(tempBytes.size()-1-i)));
 		}
-		byte[] vlqLong = new byte[8];
-		for(int j = 0; j < vlqLong.length - vlq.length; j++) {
-			vlqLong[j] = 0x00;
-		}
-		for(int j =  vlqLong.length - vlq.length; j <  vlqLong.length; j++) {
-			vlqLong[j] = vlq[j-(vlqLong.length - vlq.length)];
-		}
-		ByteBuffer bb = ByteBuffer.wrap(vlqLong);
-		return bb.getLong();
+		return l;
 	}
 
 	/**         Gets the chunk size from the BufferedInputStream containing the mid file.	 
