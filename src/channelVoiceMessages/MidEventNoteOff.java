@@ -1,6 +1,7 @@
 package channelVoiceMessages;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Objects;
 
 import notes.Note;
 import notes.Scale;
@@ -15,6 +16,11 @@ public final class MidEventNoteOff extends MidChannelVoiceEvent {
 
 	public MidEventNoteOff(int channel, Note note, int velocity, Scale s) {
 		super(channel);
+		Objects.requireNonNull(note);
+		Objects.requireNonNull(s);
+		if(velocity > 127 || velocity < 0) {
+			throw new IllegalArgumentException("int velocity passed to MidEventNoteOff constructor is out of range");
+		}
 		this.note = note;
 		this.velocity = velocity;
 		this.scale =s;
@@ -39,7 +45,8 @@ public final class MidEventNoteOff extends MidChannelVoiceEvent {
 		byte keyNumber;
 		int i = scale.getIndexForFrequency(note.getFrequency());
 		int mci = scale.middleCIndex;
-		keyNumber = (byte) (mci - i);
+		int dif = 0x3C - mci;
+		keyNumber = (byte) (dif+i);
 		baos.write(keyNumber);
 		baos.write(velocity);		
 		return baos.toByteArray();

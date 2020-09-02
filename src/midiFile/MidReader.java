@@ -4,9 +4,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import javax.activation.UnsupportedDataTypeException;
@@ -16,17 +19,22 @@ import channelVoiceMessages.MidEventNoteOn;
 import channelVoiceMessages.MidEventPitchBend;
 import channelVoiceMessages.MidEventProgramChange;
 import chunks.MidChunk.ChunkType;
-import controlChanges.MidEventBankSelect;
+import controlChanges.MidEventBankSelectLSB;
+import controlChanges.MidEventBankSelectMSB;
 import controlChanges.MidEventDamp;
 import controlChanges.MidEventDataEntryLSB;
 import controlChanges.MidEventDataEntryMSB;
 import controlChanges.MidEventPanChange;
-import controlChanges.MidEventPitchBendSensitivity;
+import controlChanges.MidEventRegisteredParameterLSB;
+import controlChanges.MidEventRegisteredParameterMSB;
 import controlChanges.MidEventVolumeChange;
 import dynamics.Dynamics;
 import metaEvents.MidEventDeviceName;
 import metaEvents.MidEventEndOfTrack;
 import metaEvents.MidEventInstrumentName;
+import metaEvents.MidEventSMPTEOffset;
+import metaEvents.MidEventTempo;
+import metaEvents.MidEventTimeSignature;
 import metaEvents.MidEventTrackName;
 import events.MidEvent;
 import midFileBuilder.MidChunkBuilder;
@@ -51,37 +59,59 @@ public class MidReader {
 
 	static boolean runningStatusInvalid = false;
 
-	static byte bankSelectMSB = -1;
-
-	static byte parameterLSB = -1;
-
-	static byte parameterMSB = -1;
-
 	static TimeSignature ts = null;
 
 	static int clocksPerMetronomeTick = -1;
 
 	static int n32ndNotesPer24Clocks = -1;
 
-	static Scale scale = null;
+	static Scale scale = new TwelveToneEqualTemperament(440, 9, 20000);
 
 	static Tempo tempo = null;
 
 	static MidSMTPEOffset startTime = null;
 
 	public static void main(String[] args) {
-		System.out.println("MidReader started");
+		File file = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\out.txt");
+		file.delete();
+		PrintStream stream = null;
+		try {
+			stream = new PrintStream(file);
+		} catch (FileNotFoundException e) {
+			System.out.println("Problem redirecting system out to file");
+		}
+		if(stream != null) {
+			System.setOut(stream);
+		}
+
 		File folder = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI");
+		List<MidFile> mfs = read(folder);
+		
+		File fo = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\0\\out.mid");
+		fo.delete();
+		try {
+			byte[] out = MidWriter.makeFile(mfs.get(0));
+			FileOutputStream fos = new FileOutputStream(fo);
+			fos.write(out);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		read(new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\0\\"));
+		
+	}
+
+	public static List<MidFile> read(File folder) {
+		System.out.println("MidReader started");
 		File[] files = folder.listFiles();
+		List<MidFile> midFiles = new ArrayList<>();
 		for(int k = 0; k < files.length; k++) {
-			if(midiFile.FileAlorigthms.getExt(files[k]).get().equals(".mid")) {
-				bankSelectMSB = -1;
-				parameterLSB = -1;
-				parameterMSB = -1;
+			if(!(files[k].isDirectory()) && midiFile.FileAlorigthms.getExt(files[k]).get().equals(".mid")) {
 				ts = null;
 				clocksPerMetronomeTick = -1;
 				n32ndNotesPer24Clocks = -1;
-				scale = null;
 				tempo = null;
 				startTime = null;
 				midFile = files[k];
@@ -93,7 +123,7 @@ public class MidReader {
 					try {
 						FileInputStream tempMidFileStream = new FileInputStream(midFile);
 						midFileStream = new BufferedInputStream(tempMidFileStream);
-						readMidFile(midFileStream);
+						midFiles.add(readMidFile(midFileStream));
 						midFileStream.close();
 					} catch (FileNotFoundException e) {
 						System.out.print("Mid file: ");
@@ -116,10 +146,10 @@ public class MidReader {
 				}
 			}
 		}		
-
+		return midFiles;
 	}
 
-	private static void readMidFile(BufferedInputStream midFileStream) throws IOException {
+	private static MidFile readMidFile(BufferedInputStream midFileStream) throws IOException {
 		MidFileBuilder midBuilder = new MidFileBuilder();
 		while(midFileStream.available() > 0) {
 			MidChunkBuilder chunkBuilder = getChunk(midFileStream).orElse(null);
@@ -150,23 +180,27 @@ public class MidReader {
 					System.out.println(" ticks from the last event");
 					MidEvent event = getEvent(midFileStream).orElse(null);
 					if(event != null) {
-						event.setTicksFromLastEvent(runningTicks);
+						event.setTicksFromLastEvent(ticks);
 						runningTicks = 0;
 					}
 					length += lengthToAdd;
 					if(event == null) {
 
 					} else if(event instanceof MidEventEndOfTrack) {
+						((MidTrackBuilder) chunkBuilder).addEvent(event);
 						while(length < chunkBuilder.getLength()) {
 							midFileStream.read();
 							length++;
 						}
 					} else if(event instanceof MidEventDeviceName) {
 						((MidTrackBuilder) chunkBuilder).setDeviceName(((MidEventDeviceName)event).name);
+						((MidTrackBuilder) chunkBuilder).addEvent(event);
 					} else if(event instanceof MidEventInstrumentName) {
-						((MidTrackBuilder) chunkBuilder).setInstrumentName(((MidEventInstrumentName)event).name);						
+						((MidTrackBuilder) chunkBuilder).setInstrumentName(((MidEventInstrumentName)event).name);
+						((MidTrackBuilder) chunkBuilder).addEvent(event);
 					} else if(event instanceof MidEventTrackName) {
-						((MidTrackBuilder) chunkBuilder).setTrackName(((MidEventTrackName)event).name);						
+						((MidTrackBuilder) chunkBuilder).setTrackName(((MidEventTrackName)event).name);		
+						((MidTrackBuilder) chunkBuilder).addEvent(event);
 					} else {
 						((MidTrackBuilder) chunkBuilder).addEvent(event);
 					}
@@ -207,6 +241,7 @@ public class MidReader {
 		b.quantize(tempo, new Dynamics(127));
 		b.homogenize();
 		System.out.println("File has been built");
+		return mf;
 	}
 
 	private static Format getHeaderFormat(BufferedInputStream midFileStream) throws IOException {
@@ -381,10 +416,10 @@ public class MidReader {
 		lengthToAdd++;
 		if(temp == 0x00) {
 			// Bank Select MSB
-			bankSelectMSB = (byte) midFileStream.read();
+			byte bankSelectMSB = (byte) midFileStream.read();
 			lengthToAdd++;
 			System.out.println("Bank select MSB");
-			return Optional.empty();
+			return Optional.of(new MidEventBankSelectMSB(channel, bankSelectMSB));
 		} else if(temp == 0x07) {
 			// Volume change
 			int volumeOutOf127 = midFileStream.read();
@@ -405,11 +440,9 @@ public class MidReader {
 			// Bank select LSB
 			byte bankSelectLSB = (byte) midFileStream.read();
 			lengthToAdd++;
-			int bankSelect = (bankSelectMSB << 7) | bankSelectLSB;
-			bankSelectMSB = -1;
 			System.out.println("Bank select LSB");
-			return Optional.of(new MidEventBankSelect(channel, bankSelect));
-		} else if(temp >= 0x20 && temp <= 0x3F) {
+			return Optional.of(new MidEventBankSelectLSB(channel, bankSelectLSB));
+		} else if(temp > 0x20 && temp <= 0x3F) {
 			// Controller number followed by 
 			// data entry LSB
 			int controllerNumber = temp - 32;
@@ -430,24 +463,18 @@ public class MidReader {
 			return Optional.of(new MidEventDamp(channel, dampOutOf127));
 		} else if(temp == 0x64) {
 			// Parameter LSB
-			parameterLSB = (byte) midFileStream.read();
+			byte parameterLSB = (byte) midFileStream.read();
 			lengthToAdd++;
 			System.out.print("Parameter lsb is ");
 			System.out.println(parameterLSB);
-			if(parameterMSB == -1) {
-				return Optional.empty();
-			}
-			return getRegisteredParameterEvent(channel);
+			return Optional.of(new MidEventRegisteredParameterLSB(channel, parameterLSB));
 		} else if(temp == 0x65) {
 			// Parameter MSB
-			parameterMSB = (byte) midFileStream.read();
+			byte parameterMSB = (byte) midFileStream.read();
 			lengthToAdd++;
 			System.out.print("Parameter msb is ");
 			System.out.println(parameterMSB);
-			if(parameterLSB == -1) {
-				return Optional.empty();
-			}
-			return getRegisteredParameterEvent(channel);
+			return Optional.of(new MidEventRegisteredParameterMSB(channel, parameterMSB));
 		} else if(temp == 0x06) {
 			byte dataEntryMSB = (byte) midFileStream.read();
 			lengthToAdd++;
@@ -548,14 +575,15 @@ public class MidReader {
 			uSecPerQuarterNoteBytesBytesInt[2] = uSecPerQuarterNoteBytes[1];
 			uSecPerQuarterNoteBytesBytesInt[3] = uSecPerQuarterNoteBytes[2];
 			ByteBuffer bb = ByteBuffer.wrap(uSecPerQuarterNoteBytesBytesInt);
-			double beatsPerMinute = (60000000.0/((double)(bb.getInt())));
+			long uSPQ = bb.getInt();
+			double beatsPerMinute = (60000000.0/((double)(uSPQ)));
 			if(tempo == null) {
 				tempo = new Tempo(beatsPerMinute);
 			}
 			System.out.print("Tempo at ");
 			System.out.print(beatsPerMinute);
 			System.out.println(" bpm");
-			optional = Optional.empty();
+			optional = Optional.of(new MidEventTempo(uSPQ));
 		} else if(temp == 0x54) {
 			int hours = midFileStream.read();
 			int minutes = midFileStream.read();
@@ -575,7 +603,8 @@ public class MidReader {
 			System.out.print(":");
 			System.out.println(nHundredthFrames);
 			startTime = new MidSMTPEOffset(hours, minutes, seconds, frames, nHundredthFrames);
-			optional = Optional.empty();
+			optional = Optional.of(new MidEventSMPTEOffset((byte)hours, (byte)minutes, (byte)seconds, 
+					(byte)frames, (byte)nHundredthFrames));
 		} else if(temp == 0x58) {
 			// Time signature
 			int beatsPerBar = midFileStream.read();
@@ -593,7 +622,8 @@ public class MidReader {
 			System.out.print("There are ");
 			System.out.print(n32ndNotesPer24Clocks);
 			System.out.println(" 32nd notes per 24 midi clocks");
-			optional = Optional.empty();
+			optional = Optional.of(new MidEventTimeSignature(beatsPerBar, (int) Math.pow(2.0, beatUnit),
+					clocksPerMetronomeTick, n32ndNotesPer24Clocks));
 		} else if(temp == 0x59) {
 			byte nSharps = (byte) midFileStream.read();
 			byte keyType = (byte) midFileStream.read();
@@ -617,18 +647,6 @@ public class MidReader {
 			length--;
 		}
 		return optional;
-	}
-
-	private static Optional<MidEvent> getRegisteredParameterEvent(int channel) {
-		if(parameterMSB == 0x00) {
-			if(parameterLSB == 0x00) {
-				parameterMSB = -1;
-				parameterLSB = -1;
-				System.out.println("Pitch bend sensitivity event");
-				return Optional.of(new MidEventPitchBendSensitivity(channel));
-			}
-		}
-		return null;
 	}
 
 	public static long getVariableLengthQuantity(BufferedInputStream midFileStream) throws IOException {

@@ -2,7 +2,6 @@ package midiFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import chunks.MidHeader;
 import chunks.MidTrack;
@@ -82,7 +81,6 @@ public class MidWriter {
 			division[0] = (byte) ((tpqn & (0b1111111 << 8)) >> 8);
 			division[1] = (byte) ((tpqn & (0b11111111)));
 		} else {
-			// TODO
 			int maxtpf = 0b11111111;
 			byte tickPerFrame = (byte) mh.ticksPer;
 			byte smpteFormat = mh.getSMPTEFormat();
@@ -95,7 +93,6 @@ public class MidWriter {
 		}
 		baos.write(division);
 		return baos.toByteArray();
-
 	}
 
 	public static byte[] makeTrack(MidTrack mt) throws IOException {
@@ -106,10 +103,32 @@ public class MidWriter {
 		long length = 0;
 		ByteArrayOutputStream baosEvents = new ByteArrayOutputStream();
 		for(MidEvent me: mt.events) {
-			
+			long ticks = me.getTicksFromLastEvent();
+			byte[] b = variableLengthQuantity((int)ticks);
+			baosEvents.write(b);
+			length+=b.length;
+			b = me.getEvent();
+			baosEvents.write(b);
+			length+=b.length;
 		}
-		return null;
-
+		byte[] lengthB = new byte[4];
+		lengthB[0] = (byte) ((length & (0b11111111 << 21)) >> 21);
+		lengthB[1] = (byte) ((length & (0b11111111 << 14)) >> 14);
+		lengthB[2] = (byte) ((length & (0b11111111 << 7)) >> 7);
+		lengthB[3] = (byte) (length & 0b11111111);
+		baos.write(lengthB);
+		baos.write(baosEvents.toByteArray());
+		return baos.toByteArray();
 	}
+	
+	public static byte[] makeFile(MidFile mf) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		baos.write(makeHeader(mf.header));
+		for(MidTrack mt : mf.tracks) {
+		baos.write(makeTrack(mt));
+		}
+		return baos.toByteArray();
+	}
+
 
 }

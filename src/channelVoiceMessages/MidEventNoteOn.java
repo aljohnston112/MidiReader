@@ -1,8 +1,8 @@
 package channelVoiceMessages;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Objects;
 
-import midiFile.MidCs;
 import notes.Note;
 import notes.Scale;
 
@@ -14,13 +14,13 @@ public final class MidEventNoteOn extends MidChannelVoiceEvent {
 		
 	public final Scale scale;
 	
-	private MidEventNoteOn() {
-		super(-1);
-		throw new AssertionError("Default MidNoteOnEvent constructor is unsupported");
-	}
-	
 	public MidEventNoteOn(int channel, Note note, int velocity, Scale s) {
 		super(channel);
+		Objects.requireNonNull(note);
+		Objects.requireNonNull(s);
+		if(velocity > 127 || velocity < 0) {
+			throw new IllegalArgumentException("int velocity passed to MidEventNoteOn constructor is out of range");
+		}
 		this.note = note;
 		this.velocity = velocity;
 		this.scale = s;
@@ -45,7 +45,8 @@ public final class MidEventNoteOn extends MidChannelVoiceEvent {
 		byte keyNumber;
 		int i = scale.getIndexForFrequency(note.getFrequency());
 		int mci = scale.middleCIndex;
-		keyNumber = (byte) (mci - i);
+		int dif = 0x3C - mci;
+		keyNumber = (byte) (dif+i);
 		baos.write(keyNumber);
 		baos.write(velocity);		
 		return baos.toByteArray();

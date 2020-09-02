@@ -1,5 +1,8 @@
 package metaEvents;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 public final class MidEventSMPTEOffset extends MidMetaEvent {
 	
 	public final byte hours;
@@ -14,6 +17,19 @@ public final class MidEventSMPTEOffset extends MidMetaEvent {
 		this.seconds = seconds;
 		this.frames = frames;
 		this.oneHundredthsOfAFrame = oneHundredthsOfAFrame;
+	}
+	
+	public byte[] getEvent() throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		baos.write(0xFF);
+		baos.write(0x54);
+		baos.write(0x05);
+		baos.write(hours);
+		baos.write(minutes);
+		baos.write(seconds);
+		baos.write(frames);
+		baos.write(oneHundredthsOfAFrame);
+		return baos.toByteArray();
 	}
 
 }

@@ -2,8 +2,6 @@ package channelVoiceMessages;
 
 import java.io.ByteArrayOutputStream;
 
-import events.MidEvent;
-
 public final class MidEventPitchBend extends MidChannelVoiceEvent {
 
 	// 8192 means no bend
@@ -12,6 +10,9 @@ public final class MidEventPitchBend extends MidChannelVoiceEvent {
 	
 	public MidEventPitchBend(int channel, int value) {
 		super(channel);
+		if(value > 16383 || value < 0) {
+			throw new IllegalArgumentException("int value passed to MidEventPitchBend constructor is out of range");
+		}
 		this.value = value;
 	}
 	
