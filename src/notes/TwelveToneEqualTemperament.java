@@ -3,20 +3,29 @@ package notes;
 import java.util.ArrayList;
 
 /**
-@author Alexander Johnston 
-        Copyright 2019 
-        A class for creating a 12 tone equal temperament
+ *         A class for creating a 12 tone equal temperament.
+ * @author Alexander Johnston 
+ * @since  Copyright 2019 
  */
-public class TwelveToneEqualTemperament extends EqualTemperament {
+public final class TwelveToneEqualTemperament extends EqualTemperament {
 
-	/**       Creates a 12 tone equal temperament.
-	 * @param middleA is middle A.
-	 * @param octavesUnderMiddleA is the number of octaves under middle A to generate.
-	 * @param maxFrequency is the max frequency.
+	public final int middleCIndex;
+
+	/**                           Creates a 12 tone equal temperament.
+	 * @param middleA             The frequency of middle A.
+	 * @param octavesUnderMiddleA The number of octaves under middle A to generate.
+	 * @param maxFrequency        The max frequency.
+	 *
+	 * @throws IllegalArgumentException If middleA or octavesUnderMiddleA are not greater than 0, or
+	 *                                  maxFrequency is not at least the frequency of middleA.
 	 */
 	public TwelveToneEqualTemperament(double middleA, int octavesUnderMiddleA, float maxFrequency) {
 		super(middleA, 12, octavesUnderMiddleA, maxFrequency);
-		middleCIndex = middleAIndex + 3;
+		if(notes.size() < middleAIndex + 4) {
+			middleCIndex = -1;
+		} else {
+			middleCIndex = middleAIndex + 3;
+		}
 	}
 
 	/** Adds note names for 12-TET (A, A#, B, C, C#, D, D#, E, F, F#, G, G#)
@@ -33,5 +42,5 @@ public class TwelveToneEqualTemperament extends EqualTemperament {
 			notes.add(n);
 		}
 	}
-	
+
 }

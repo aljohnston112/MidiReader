@@ -1,9 +1,9 @@
 package notes;
 
 /**
-@author Alexander Johnston 
-        Copyright 2019 
-        A class for musical temperaments
+ *         A class for making musical temperaments.
+ * @author Alexander Johnston 
+ * @since  Copyright 2019 
  */
 abstract public class Temperament extends Scale {
 	

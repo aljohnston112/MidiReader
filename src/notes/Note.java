@@ -1,45 +1,43 @@
 package notes;
 
+import java.util.Objects;
+
 /**
-@author Alexander Johnston 
-        Copyright 2019 
-        A class for making notes
+ *         A class for making musical notes.
+ * @author Alexander Johnston 
+ * @since  Copyright 2019 
  */
-public class Note {
+public final class Note {
 
 	// The name of this note
-	private String name = "";
+	private final String name;
 
 	// The frequency of this note
-	private double hertz;
+	private final double hertz;
 
 	/**
-	 * @return The name of this note. May be empty if not set.
+	 * @return The name of this note.
 	 */
 	public String getName() {
 		return name;
 	}
 
 	/**
-	 * @return The frequency of this note
+	 * @return The frequency of this note in hertz.
 	 */
 	public double getFrequency() {
 		return hertz;
 	}
 
-	/**       Creates a note
-	 * @param name The name of this note
-	 * @param hertz The frequency of this note
+	/**             Creates a note.
+	 * @param name  The name of the note.
+	 * @param hertz The frequency of the note in hertz.
+	 * 
+	 * @throws NullPointerException If name is null.
 	 */
 	public Note(String name, double hertz) {
+		Objects.requireNonNull(name);
 		this.name = name;
-		this.hertz = hertz;
-	}
-
-	/**       Creates a note
-	 * @param hertz The frequency of this note
-	 */
-	public Note(double hertz) {
 		this.hertz = hertz;
 	}
 	

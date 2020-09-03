@@ -1,74 +1,61 @@
 package dynamics;
 
 /**
+ *         A class for volume dynamics.
  * @author Alexander Johnston
- * Copyright 2019
- * A class for dynamics
+ * @since  Copyright 2019
  */
-public class Dynamics {
-
-	// The types of dynamics this class can generate
-	public enum Dynamic{ 
-		fff, ff, f, mf, mp, p, pp, ppp, silent
-	}	
+public final class Dynamics {
 	
-	public double[] dynamics = new double[9];
+	final double fffAmplitude;
+	final double ffAmplitude;
+	final double fAmplitude;
+	final double mfAmplitude;
+	final double mpAmplitude;
+	final double pAmplitude;
+	final double ppAmplitude;
+	final double pppAmplitude;
+	final double silenceAmplitude;
 	
-	/**       Makes a new Dynamics 
-	 * @param amplitude as the max amplitude
+	/**                 Makes a Dynamics object.
+	 * @param amplitude The max amplitude.
+	 * 
+	 * @throws IllegalArgumentException If amplitude is not greater than 0.
 	 */
 	public Dynamics(double amplitude) {
 		// TODO Volume should be an exponential function of velocity
-		dynamics[0] = amplitude;
-		dynamics[1] = amplitude * 112.0/127.0;
-		dynamics[2] = amplitude * 96.0/127.0;
-		dynamics[3] = amplitude * 80.0/127.0;
-		dynamics[4] = amplitude * 64.0/127.0;
-		dynamics[5] = amplitude * 49.0/127.0;
-		dynamics[6] = amplitude * 33.0/127.0;
-		dynamics[7] = amplitude * 16.0/127.0;
-		dynamics[8] = 0;
-	}
-	
-	/**        Gets the amplitude of a wave corresponding to the dynamic
-	 * @param  amplitude as the original amplitude assumed to be fff
-	 * @param  dynamic as the dynamic to set the amplitude to
-	 * @return A double representing the amplitude scaled down to the dynamic dyn
-	 */
-	public double getAmplitude(Dynamic dynamic) {
-		switch(dynamic) {
-		case fff: 
-			return dynamics[0];
-		case ff: 
-			return dynamics[1];
-		case f: 
-			return dynamics[2];
-		case mf: 
-			return dynamics[3];
-		case mp: 
-			return dynamics[4];
-		case p: 
-			return dynamics[5];
-		case pp: 
-			return dynamics[6];
-		case ppp: 
-			return dynamics[7];
-		case silent:
-			return dynamics[8];
+		if(amplitude <= 0) {
+			throw new IllegalArgumentException("double amplitude passed to Dynamics constructor must be greater than 0");
 		}
-		throw new RuntimeException("Dynamics object is corrupt");
+		double base = Math.pow(2.0, (1.0/amplitude));
+		fffAmplitude = amplitude;
+		ffAmplitude = Math.pow(base, 7.0/8.0);
+		fAmplitude = Math.pow(base, 3.0/4.0);
+		mfAmplitude = Math.pow(base, 5.0/8.0);
+		mpAmplitude = Math.pow(base, 1.0/2.0);
+		pAmplitude = Math.pow(base, 3.0/8.0);
+		ppAmplitude = Math.pow(base, 1.0/4.0);
+		pppAmplitude = Math.pow(base, 1.0/8.0);
+		silenceAmplitude = 0;
 	}
 	
-	public double quantize(double velocity) {
+	/**                 Quantizes an amplitude to the nearest dynamic.
+	 * @param amplitude The amplitude to quantize.
+	 * @return          The amplitude quantized to the nearest dynamic.
+	 */
+	public double quantize(double amplitude) {
+		// TODO perhaps take slope into account
+		double[] dynamics = {fffAmplitude, ffAmplitude, fAmplitude, mfAmplitude, 
+				mpAmplitude, pAmplitude, ppAmplitude, pppAmplitude, silenceAmplitude};
 		int i = 0;
-		while(dynamics[i] > velocity) {
+		while(dynamics[i] > amplitude) {
 			i++;
 		}
 		if(i == 0) {
 			return dynamics[i];
 		}
-		double dif1 = Math.abs(dynamics[i]-velocity);
-		double dif2 = Math.abs(dynamics[i-1]-velocity);
+		double dif1 = Math.abs(dynamics[i]-amplitude);
+		double dif2 = Math.abs(dynamics[i-1]-amplitude);
 		if(dif1 < dif2) {
 			return dynamics[i];
 		} else {

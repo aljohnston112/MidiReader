@@ -44,7 +44,7 @@ import midFileBuilder.MidTrackBuilder;
 import midFileBuilder.MidHeaderBuilder.Format;
 import notes.Note;
 import notes.Scale;
-import notes.ThreeDimensionalNoteArray;
+import notes.TimedNoteChannel;
 import notes.TwelveToneEqualTemperament;
 import rhythm.Tempo;
 import rhythm.TimeSignature;
@@ -234,7 +234,7 @@ public class MidReader {
 			midBuilder.setN32ndNotesPer24Clocks(n32ndNotesPer24Clocks);			
 		}
 		MidFile mf = midBuilder.build();
-		ThreeDimensionalNoteArray b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
+		TimedNoteChannel b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
 		b.quantize(tempo, new Dynamics(127));
 		b.homogenize(tempo, new Dynamics(127));
 		b.condense(tempo, new Dynamics(127));

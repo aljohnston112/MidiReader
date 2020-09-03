@@ -11,7 +11,7 @@ import channelVoiceMessages.MidEventNoteOff;
 import channelVoiceMessages.MidEventNoteOn;
 import events.MidEvent;
 import notes.Note;
-import notes.ThreeDimensionalNoteArray;
+import notes.TimedNoteChannel;
 import notes.TimedNote;
 
 /** MidTrack is a midi track chunk.
@@ -41,8 +41,8 @@ public class MidTrack extends MidChunk {
 		this.deviceName = deviceName;
 	}
 
-	public ThreeDimensionalNoteArray getTrack(double ticksPerSecond) {
-		ThreeDimensionalNoteArray notesOut = new ThreeDimensionalNoteArray();
+	public TimedNoteChannel getTrack(double ticksPerSecond) {
+		TimedNoteChannel notesOut = new TimedNoteChannel();
 		Map<Integer, ArrayList<MidEventNoteOn>> channelToNoteOn = new HashMap<>();
 		Map<Integer, ArrayList<Long>> channelToTicks = new HashMap<>();
 		Map<Integer, ArrayList<ArrayList<TimedNote>>> channelToTimedNotes = new HashMap<>();

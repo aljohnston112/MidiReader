@@ -26,7 +26,7 @@ public class TimeSignatureTest {
 		System.out.println("and 2 beats");
 		int bars = 2;
 		int beats = 2;
-		double[] times = timeSignature.getTime(tempo, bars, beats);
+		double[] times = timeSignature.getRhythm(tempo, bars, beats);
 		StringBuilder sb = new StringBuilder();
 		for(double t : times) {
 			sb.append(t);	
