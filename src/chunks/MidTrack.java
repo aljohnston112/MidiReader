@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import channelVoiceMessages.MidEventNoteOff;
 import channelVoiceMessages.MidEventNoteOn;
@@ -14,13 +15,12 @@ import notes.Note;
 import notes.TimedNoteChannel;
 import notes.TimedNote;
 
-/** MidTrack is a midi track chunk.
+/**         MidTrack is a midi track chunk.
  *  @author Alexander Johnston
  *  @since  2020
  */
 public class MidTrack extends MidChunk {
 
-	// The midi events
 	public final List<MidEvent> events;
 
 	public final String trackName;
@@ -29,18 +29,34 @@ public class MidTrack extends MidChunk {
 
 	public final String deviceName;
 
-	/**       Creates a midi track.
-	 * @param length as the length of the midi track in bytes.
-	 * @param events as the midi events contained in the track.
+	/**                      Creates a midi track.
+	 * @param length         The length of the midi track in bytes.
+	 * @param events         The midi events contained in the track.
+	 * @param trackName      The name of the track.
+	 * @param instrumentName The name of the instrument on this track.
+	 * @param deviceName     The name of the device on this track.
+	 * 
+	 * @throws NullPointerException If events, trackName, instrumentName, or deviceName are null.
 	 */
 	public MidTrack(long length, List<MidEvent> events, String trackName, String instrumentName, String deviceName) {
 		super(length);
+		Objects.requireNonNull(events);
+		Objects.requireNonNull(trackName);
+		Objects.requireNonNull(instrumentName);
+		Objects.requireNonNull(deviceName);
 		this.events = Collections.unmodifiableList(events);
 		this.trackName = trackName;
 		this.instrumentName = instrumentName;
 		this.deviceName = deviceName;
 	}
 
+	/**                      Creates a TimedNoteChannel containing the sequences in this track.
+	 * @param ticksPerSecond The ticks in one second; used for determining time of the notes.
+	 * @return               A TimedNoteChannel containing the sequences in this track.
+	 * 
+	 * @throws IllegalArgumentException If the events in this track contain a note off event 
+	 *                                  without a preceding note on event.
+	 */
 	public TimedNoteChannel getTrack(double ticksPerSecond) {
 		TimedNoteChannel notesOut = new TimedNoteChannel();
 		Map<Integer, ArrayList<MidEventNoteOn>> channelToNoteOn = new HashMap<>();
