@@ -4,26 +4,40 @@ import java.io.ByteArrayOutputStream;
 import java.util.Objects;
 
 import notes.Note;
-import notes.Scale;
+import notes.TwelveToneEqualTemperament;
 
+/**         MidEventNoteOff is a midi note off event.
+ *  @author Alexander Johnston
+ *  @since  Copyright 2020
+ */
 public final class MidEventNoteOff extends MidChannelVoiceEvent {
 
 	public final Note note;
 
 	public final int velocity;
 	
-	public final Scale scale;
+	public final TwelveToneEqualTemperament scale;
 
-	public MidEventNoteOff(int channel, Note note, int velocity, Scale s) {
+	/**                Creates a note off midi event.
+	 * @param channel  The channel to receive the event.
+	 * @param note     The note to be turned off.
+	 * @param velocity The release velocity.
+	 * @param scale    The TwelveToneEqualTemperament used for determining the note index.
+	 * 
+	 * @throws NullPointerException     If note or scale are null.
+	 * @throws IllegalArgumentException If velocity is not in it's 7-bit range (0-127 inclusive).
+	 */
+	public MidEventNoteOff(int channel, Note note, int velocity, TwelveToneEqualTemperament scale) {
 		super(channel);
 		Objects.requireNonNull(note);
-		Objects.requireNonNull(s);
+		Objects.requireNonNull(scale);
 		if(velocity > 127 || velocity < 0) {
-			throw new IllegalArgumentException("int velocity passed to MidEventNoteOff constructor is out of range");
+			throw new IllegalArgumentException("int velocity passed to MidEventNoteOff constructor"
+					+ " is not in range (0-127 inclusive)");
 		}
 		this.note = note;
 		this.velocity = velocity;
-		this.scale =s;
+		this.scale =scale;
 	}
 
 	@Override
@@ -39,6 +53,7 @@ public final class MidEventNoteOff extends MidChannelVoiceEvent {
 		}
 	}
 	
+	@Override
 	public byte[] getEvent() {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		baos.write(0x80 | ((byte)channel));

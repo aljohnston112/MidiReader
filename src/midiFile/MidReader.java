@@ -43,7 +43,6 @@ import midFileBuilder.MidHeaderBuilder;
 import midFileBuilder.MidTrackBuilder;
 import midFileBuilder.MidHeaderBuilder.Format;
 import notes.Note;
-import notes.Scale;
 import notes.TimedNoteChannel;
 import notes.TwelveToneEqualTemperament;
 import rhythm.Tempo;
@@ -65,7 +64,7 @@ public class MidReader {
 
 	static int n32ndNotesPer24Clocks = -1;
 
-	static Scale scale = new TwelveToneEqualTemperament(440, 9, 20000);
+	static TwelveToneEqualTemperament scale = new TwelveToneEqualTemperament(440, 9, 20000);
 
 	static Tempo tempo = null;
 
@@ -235,9 +234,9 @@ public class MidReader {
 		}
 		MidFile mf = midBuilder.build();
 		TimedNoteChannel b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
-		b.quantize(tempo, new Dynamics(127));
-		b.homogenize(tempo, new Dynamics(127));
-		b.condense(tempo, new Dynamics(127));
+		b.quantize(tempo.thirtySecondNoteInSeconds, new Dynamics(127));
+		b.homogenize();
+		b.condense();
 		System.out.println("File has been built");
 		return mf;
 	}

@@ -92,7 +92,7 @@ public class MidTrack extends MidChunk {
 				}
 				time = channelToTicks.get(channel).get(index)/ticksPerSecond;
 				if(me.getTicksFromLastEvent() != 0 && tme == null) {
-					channelToTimedNotes.get(channel).get(index).add(new TimedNote(new Note(0), time, 0));
+					channelToTimedNotes.get(channel).get(index).add(new TimedNote(new Note("", 0), time, 0));
 				} else if(me.getTicksFromLastEvent() != 0){
 					channelToTimedNotes.get(channel).get(index).add(new TimedNote(tme.note, time, 0));
 				}

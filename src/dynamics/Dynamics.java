@@ -23,7 +23,6 @@ public final class Dynamics {
 	 * @throws IllegalArgumentException If amplitude is not greater than 0.
 	 */
 	public Dynamics(double amplitude) {
-		// TODO Volume should be an exponential function of velocity
 		if(amplitude <= 0) {
 			throw new IllegalArgumentException("double amplitude passed to Dynamics constructor must be greater than 0");
 		}
@@ -44,7 +43,7 @@ public final class Dynamics {
 	 * @return          The amplitude quantized to the nearest dynamic.
 	 */
 	public double quantize(double amplitude) {
-		// TODO perhaps take slope into account
+		// TODO perhaps take exponential slope into account
 		double[] dynamics = {fffAmplitude, ffAmplitude, fAmplitude, mfAmplitude, 
 				mpAmplitude, pAmplitude, ppAmplitude, pppAmplitude, silenceAmplitude};
 		int i = 0;

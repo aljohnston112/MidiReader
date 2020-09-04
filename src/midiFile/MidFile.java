@@ -34,7 +34,7 @@ public final class MidFile {
 		if(header.isSeconds) {
 			ticksPerSecond = ticksPer;		
 		} else {
-			ticksPerSecond = ((double)ticksPer)/tempo.getQuarter();
+			ticksPerSecond = ((double)ticksPer)/tempo.quarterNoteInSeconds;
 		}
 		return ticksPerSecond;
 	}
