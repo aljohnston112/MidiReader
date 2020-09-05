@@ -43,18 +43,28 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 
 	// The number of layers deep this ProbFunTree is
 	private int layer;
-	
+
 	private double maxPercent;
 
 	// The rounding error to prevent over and under flow
 	private double roundingError = 0;
+
+	private int modCount = 0;
+
+	public int getModCount() {
+		return modCount;
+	}
+
+	public void resetModCount(int modCount) {
+		this.modCount = 0;
+	}
 
 	/**        Creates a ProbFunTree where there is an equal chance of getting any element from choices when fun() in called.
 	 *         Note that the elements in choices passed into this constructor will NOT be copied and will be added by reference.
 	 * @param  choices as the choices to be randomly picked from.
 	 * @param  layers as the number of layers for this ProbFunTree to generate.
 	 *         Ex: for choices[0, 1] and layers=2, the following data structure will be made,
-	 *         <br>{@literal [[0->0.5][1->0.5]]} where the first choice is propagated like so 
+	 *         <br>{@literal 1st layer: [[0->0.5][1->0.5]]} where the first choice is propagated to a 2nd layer:
 	 *         {@literal [[0->[[0->0.5][1->0.5]]][1->[[0->0.5][1->0.5]]]]}.
 	 * @throws NullPointerException if choices is null.
 	 * @throws IllegalArgumentException if there isn't at least one element in choices, or 
@@ -72,6 +82,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		this.maxPercent = 1.0;
 		for(T choice : choices) {
 			this.probMap.put(choice, 1.0/choices.size());
+			modCount++;
 		}
 		fixProbSum();
 		if(layers != this.layer+1) {
@@ -80,7 +91,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			}
 		}
 	}
-	
+
 	public ProbFunTree(Set<T> choices, int layers, double maxPercent){
 		Objects.requireNonNull(choices);
 		if(choices.size() < 1) 
@@ -96,6 +107,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		this.maxPercent = maxPercent;
 		for(T choice : choices) {
 			this.probMap.put(choice, 1.0/choices.size());
+			modCount++;
 		}
 		fixProbSum();
 		if(layers != this.layer+1) {
@@ -104,7 +116,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			}
 		}	
 	}
-	
+
 	private ProbFunTree(Set<T> choices, int layers, double maxPercent, ProbFunTree<T> parent){
 		Objects.requireNonNull(choices);
 		if(choices.size() < 1) 
@@ -121,6 +133,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		this.maxPercent = maxPercent;
 		for(T choice : choices) {
 			this.probMap.put(choice, 1.0/choices.size());
+			modCount++;
 		}
 		fixProbSum();
 		if(this.layer+1 < layers) {
@@ -151,6 +164,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		this.maxPercent = 1.0;
 		for(T choice : choices) {
 			this.probMap.put(choice, 1.0/choices.size());
+			modCount++;
 		}
 		fixProbSum();
 		if(this.layer+1 < layers) {
@@ -192,6 +206,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		this.maxPercent = 1.0;
 		for(Entry<T, Double> choice : probMap.entrySet()) {
 			this.probMap.put(choice.getKey(), choice.getValue());
+			modCount++;
 		}
 		fixProbSum();
 		if(this.layer+1 != layers) {
@@ -231,6 +246,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		this.maxPercent = 1.0;
 		for(Entry<T, Double> choice : probMap.entrySet()) {
 			this.probMap.put(choice.getKey(), choice.getValue());
+			modCount++;
 		}
 		fixProbSum();
 		if(this.layer+1 != layers) {
@@ -359,6 +375,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 		double probability = 1.0/(this.probMap.size());
 		if(!this.probMap.containsKey(element)) {
 			this.probMap.put(element, probability);
+			modCount++;
 		}
 		scaleProbs();
 		if(!this.children.containsKey(element) && elements!= null && !elements.isEmpty()) {
@@ -412,12 +429,13 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			throw new IllegalArgumentException("percent passed to add() is not between 0.0 and 1.0 (exclusive)");
 		}
 		// Invariants secured
-		double scale = (1.0-percent);
+		double scale = (percent);
 		Set<Entry<T, Double>> probabilities = this.probMap.entrySet();
 		for(Entry<T, Double> e : probabilities) {
 			e.setValue(e.getValue()*scale);
 		}
 		this.probMap.put(element, percent);
+		modCount++;
 		scaleProbs();
 		if(!this.children.isEmpty() && !this.children.containsKey(element) && elements != null && !elements.isEmpty()) {
 			int layers = this.layer+2;
@@ -581,6 +599,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			this.children.remove(element);
 		}
 		scaleProbs();
+		modCount--;
 		return true;
 	}
 
@@ -624,6 +643,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 				e = it.next();
 				if(e.getValue() <= min+this.roundingError && e.getValue() < max-this.roundingError) {
 					it.remove();
+					modCount--;
 					this.children.remove(e.getKey());
 					if(parentSize() == 1) {
 						scaleProbs();
@@ -670,8 +690,9 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			Entry<T, Double> e;
 			while(it.hasNext()) {
 				e = it.next();
-				if(e.getValue() <= min+this.roundingError && e.getValue() < max-this.roundingError) {
+				if(e.getValue() <= percent+this.roundingError && e.getValue() < max-this.roundingError) {
 					it.remove();
+					modCount--;
 					this.children.remove(e.getKey());
 					if(parentSize() == 1) {
 						scaleProbs();
@@ -875,6 +896,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			e.setValue(e.getValue()*leftoverScale);
 		}
 		this.probMap.put(element, goodProbability);
+		modCount++;
 		fixProbSum();
 		return this.probMap.get(element);
 	}
@@ -938,6 +960,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			e.setValue(e.getValue()*leftoverScale);
 		}
 		this.probMap.put(element, badProbability);
+		modCount++;
 		fixProbSum();
 		return this.probMap.get(element);
 	}
@@ -1061,6 +1084,7 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 	private ProbFunTree(ProbFunTree<T> probFunTree) {
 		for(Entry<T, Double> s : probFunTree.probMap.entrySet()) {
 			this.probMap.put(s.getKey(), s.getValue());
+			modCount++;
 		}
 		for(Entry<T, ProbFunTree<T>> e : probFunTree.children.entrySet()) {
 			this.children.put(e.getKey(), e.getValue().clone());
@@ -1083,67 +1107,31 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 			this.id = System.identityHashCode(this);
 		}
 		StringBuilder sb = new StringBuilder();
-		sb.append("PF ");
+		sb.append("PF:");
 		sb.append(this.id);
-		sb.append(": [");
+		sb.append(": ");
 		for(Entry<T, Double> e : this.probMap.entrySet()) {
 			sb.append("[");
 			sb.append(e.getKey());
 			sb.append(" = ");
 			sb.append(e.getValue()*100.0);
-			sb.append("%]");
+			sb.append("%],");
 		}
+		sb.delete(sb.length()-1, sb.length());
 		if(!this.children.isEmpty()) {
-			sb.append("]\n");
-			for(int i = 0; i < 15; i++) {
-				sb.append(" ");
+			sb.append(";\n");
+			sb.append("    Node: ");
+			for(Entry<T, ProbFunTree<T>> e : this.children.entrySet()) {
+				sb.append("[");
+				sb.append(e.getKey());
+				sb.append(" = ");
+				sb.append(e.getValue());
+				sb.delete(sb.length()-1, sb.length());
+				sb.append("]");
 			}
+		} else{
 		}
-		if(this.parent != null) {
-			for(int i = 0; i < 31; i++) {
-				sb.append(" ");
-			}
-		}
-		sb.append("Children: [");
-		int count = 0;
-		for(Entry<T, ProbFunTree<T>> e : this.children.entrySet()) {
-			count++;
-			sb.append("[");
-			sb.append(e.getKey());
-			sb.append(" = ");
-			sb.append(e.getValue());
-			sb.delete(sb.length()-1, sb.length());
-			sb.append("]\n");
-			if(this.parent != null && this.parent.parent != null && count == this.children.size()) {
-				sb.delete(sb.length()-2, sb.length());
-				sb.append("\n");
-			}
-			for(int i = 0; i < 26; i++) {
-				sb.append(" ");
-			}
-			if(this.parent != null) {
-				for(int i = 0; i < 31; i++) {
-					sb.append(" ");
-				}
-			}
-		}
-		if(this.children.isEmpty()) {
-			sb.delete(sb.length()-11, sb.length());
-
-			if(this.parent != null) {
-				sb.delete(sb.length()-31, sb.length());
-			}
-			sb.append("]");
-
-			sb.append("\n");
-		} else {
-			sb.delete(sb.length()-28, sb.length());
-			if(this.parent != null) {
-				sb.delete(sb.length()-31, sb.length());
-			}
-			sb.append("]]");
-			sb.append("\n");
-		}
+		sb.append("\n");
 		return sb.toString();
 	}
 
