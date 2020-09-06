@@ -7,13 +7,27 @@ import java.util.Objects;
  * @author Alexander Johnston 
  * @since  Copyright 2020 
  */
-public final class TimedNote {
+public final class TimedNote implements Comparable<TimedNote> {
 
 	public final Note note;
 	
 	public final double time;
 	
 	public final double velocity;
+	
+	@Override
+	public int compareTo(TimedNote o) {
+		int h = note.compareTo(o.note);
+		if(h != 0) {
+			return h;
+		}
+		h = Double.compare(time, o.time);
+		if(h != 0) {
+			return h;
+		}
+		h = Double.compare(velocity, o.velocity);
+		return h;
+	}
 	
 	/**
 	 * @param note     The note to give a time and velocity.

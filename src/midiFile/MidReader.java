@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import javax.activation.UnsupportedDataTypeException;
 
+import ai.MarkovChain;
 import channelVoiceMessages.MidEventNoteOff;
 import channelVoiceMessages.MidEventNoteOn;
 import channelVoiceMessages.MidEventPitchBend;
@@ -237,6 +238,7 @@ public class MidReader {
 		b.quantize(tempo.thirtySecondNoteInSeconds, new Dynamics(127));
 		b.homogenize();
 		b.condense(tempo.thirtySecondNoteInSeconds);
+		MarkovChain mc = new MarkovChain(b.noteArray.get(0));
 		System.out.println("File has been built");
 		return mf;
 	}

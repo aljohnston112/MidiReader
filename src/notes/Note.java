@@ -7,7 +7,7 @@ import java.util.Objects;
  * @author Alexander Johnston 
  * @since  Copyright 2019 
  */
-public final class Note {
+public final class Note implements Comparable<Note> {
 
 	// The name of this note
 	public final String name;
@@ -26,7 +26,7 @@ public final class Note {
 		this.name = name;
 		this.hertz = hertz;
 	}
-	
+
 	@Override
 	public boolean equals(Object o) {
 		if((o instanceof Note) && (((Note)o).hertz == this.hertz) && (((Note)o).name.equals(this.name))) {
@@ -35,5 +35,15 @@ public final class Note {
 			return false;
 		}
 	}
-	
+
+	@Override
+	public int compareTo(Note o) {
+		int h = Double.compare(hertz, o.hertz);
+		if(h != 0) {
+			return h;
+		}
+		h = name.compareTo(o.name);
+		return h;
+	}
+
 }
