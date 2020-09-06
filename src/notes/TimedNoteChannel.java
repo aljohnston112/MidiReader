@@ -44,7 +44,7 @@ public class TimedNoteChannel {
 			throw new IllegalArgumentException("double timeQuanta passed to quantize() "
 					+ "must be greater than 0");
 		}
-		
+
 		TimedNote timedNote;
 		TimedNote timedNoteReplacement;
 		for(ArrayList<TimedNote> track : noteArray) {
@@ -112,7 +112,7 @@ public class TimedNoteChannel {
 	}
 
 	/**                           Condenses the silence in one track with the notes in another, if possible.
-	 *                            This method will need to be called until it returns false to get condense all the silence.
+	 *                            This method will need to be called until it returns false to condense all the silence.
 	 * @param  searchForSilence   The track to search for silence.
 	 * @param  silenceReplacement The track to search for TimedNotes which will replace the silence.
 	 * @return                    True if this method was able to fill some silence with a TimedNote 
@@ -120,7 +120,7 @@ public class TimedNoteChannel {
 	 *                            
 	 * @throws NullPointerException If searchForSilence or silenceReplacement are null.
 	 */
-	private boolean condense(ArrayList<TimedNote> searchForSilence, ArrayList<TimedNote> silenceReplacement, double error) {
+	private boolean condense(ArrayList<TimedNote> searchForSilence, ArrayList<TimedNote> silenceReplacement, double overlap) {
 		Objects.requireNonNull(searchForSilence);
 		Objects.requireNonNull(silenceReplacement);
 		boolean changed = false;
@@ -154,24 +154,24 @@ public class TimedNoteChannel {
 		for(int j = silenceStartIndex; j < silenceEndIndex; j++) {
 			silenceTime+=searchForSilence.get(j).time;
 		}
-		double enet = silenceStartTime + silenceTime;
+		double silenceEndTime = silenceStartTime + silenceTime;
 		// Find replacement notes
 		i = 0;
 		while(i < silenceReplacement.size() && replacementStartTime < silenceStartTime) {
 			replacementStartTime+=silenceReplacement.get(i).time;
 			i++;
 		}
-		if((Math.abs(replacementStartTime - silenceStartTime) < error)) {
+		if((Math.abs(replacementStartTime - silenceStartTime) < overlap)) {
 			replacementStartIndex = i;
 		} else if(replacementStartTime > silenceStartTime) {
 			i--;
 			replacementStartTime-=silenceReplacement.get(i).time;
-			if((Math.abs(replacementStartTime - silenceStartTime) < error)) {
+			if((Math.abs(replacementStartTime - silenceStartTime) < overlap)) {
 				replacementStartIndex = i;
 			} else {
 				replacementStartTime+=silenceReplacement.get(i).time;
 				i++;
-				if(replacementStartTime > silenceStartTime && replacementStartTime < enet) {
+				if(replacementStartTime > silenceStartTime && replacementStartTime < silenceEndTime) {
 					replacementStartIndex = i;
 				}
 			}
@@ -179,50 +179,57 @@ public class TimedNoteChannel {
 		if(replacementStartIndex == -1) {
 			return false;
 		}
-		replacementTime += silenceReplacement.get(i).time;
-		i++;
 		while(i < silenceReplacement.size() && replacementTime < silenceTime) {
 			replacementTime+=silenceReplacement.get(i).time;
 			i++;
 		}
-		if((replacementTime < silenceTime) || (Math.abs(replacementTime - silenceTime) < error)) {
+		if((replacementTime < silenceTime) || (Math.abs(replacementTime - silenceTime) < overlap)) {
 			replacementEndIndex = i;
 		} else {
 			i--;
 			replacementTime-=silenceReplacement.get(i).time;
-			if((replacementTime < silenceTime) || (Math.abs(replacementTime - silenceTime) < error)) {
+			if((replacementTime < silenceTime) || (Math.abs(replacementTime - silenceTime) < overlap)) {
 				replacementEndIndex = i;
 			}
 		}
 		// Replace silence
-		double bnt = replacementStartTime-silenceStartTime;
-		double eent = silenceTime-replacementTime;
-		for(int j = silenceStartIndex; j < silenceEndIndex; j ++) {
+		double silenceAtStart = replacementStartTime-silenceStartTime;
+		double silenceAtEnd = silenceTime-replacementTime;
+		for(int j = silenceStartIndex; j < silenceEndIndex; j++) {
 			searchForSilence.remove(silenceStartIndex);
 			changed = true;
 		}
-		if(bnt != 0) {
-			searchForSilence.add(new TimedNote(new Note("", 1), bnt, 0));
+		if(silenceAtStart > 0 && replacementTime > 0) {
+			searchForSilence.add(silenceStartIndex, new TimedNote(new Note("", 1), silenceAtStart, 0));
 			changed = true;
 		}
 		for(int j = replacementStartIndex, k = 0; j < replacementEndIndex; j++, k++) {
-			searchForSilence.add(silenceStartIndex + k, silenceReplacement.get(replacementStartIndex));
-			silenceReplacement.remove(replacementStartIndex);
+			searchForSilence.add(silenceStartIndex + k, silenceReplacement.get(j));
+			silenceReplacement.add(j, new TimedNote(new Note("", 1), silenceReplacement.get(j).time, 0));
+			silenceReplacement.remove(j+1);
 			changed = true;
 		}
-		if(eent != 0) {
-			searchForSilence.add(replacementEndIndex+1, new TimedNote(new Note("", 1), eent, 0));
+		if(silenceAtEnd > 0 && replacementTime > 0) {
+			searchForSilence.add(replacementEndIndex+1, new TimedNote(new Note("", 1), silenceAtEnd, 0));
 			changed = true;
 		}
-		// Delete notes with no time
-		for(ArrayList<TimedNote> track : noteArray) {
+		// Delete notes and tracks with no time
+		for(int k = 0; k < noteArray.size(); k++) {
+			ArrayList<TimedNote> track = noteArray.get(k);
+			boolean keepTrack = false;
 			for(int j = 0; j < track.size(); j++) {
 				if(track.get(j).time == 0) {
 					track.remove(j);
 				}
+				if(track.get(j).velocity != 0) {
+					keepTrack = true;
+				}
+			}
+			if(!keepTrack) {
+				noteArray.remove(k);
 			}
 		}
-		
+		// Append extra notes from replacement track to silence track
 		silenceStartTime = 0;
 		for(TimedNote tn : searchForSilence) {
 			silenceStartTime+=tn.time;
@@ -233,17 +240,16 @@ public class TimedNoteChannel {
 			replacementStartTime+=silenceReplacement.get(i).time;
 			i++;
 		}
-		bnt = replacementStartTime-silenceStartTime;
-		if(bnt > 0) {
-			searchForSilence.add(new TimedNote(new Note("", 1), bnt, 0));
+		silenceAtStart = replacementStartTime-silenceStartTime;
+		if(silenceAtStart > 0) {
+			searchForSilence.add(new TimedNote(new Note("", 1), silenceAtStart, 0));
 			changed = true;
 		}
-		if(bnt >= 0) {
-			replacementStartIndex = i;
-			for(int j = replacementStartIndex; j < silenceReplacement.size(); j++) {
-				searchForSilence.add(silenceReplacement.get(j));
-				silenceReplacement.remove(j);
-			}
+		replacementStartIndex = i;
+		for(int j = replacementStartIndex; j < silenceReplacement.size(); j++) {
+			searchForSilence.add(silenceReplacement.get(j));
+			silenceReplacement.add(j, new TimedNote(new Note("", 1.0), silenceReplacement.get(j).time, 0));
+			silenceReplacement.remove(j+1);
 		}
 		return changed;
 	}
