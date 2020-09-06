@@ -10,24 +10,10 @@ import java.util.Objects;
 public final class Note {
 
 	// The name of this note
-	private final String name;
+	public final String name;
 
 	// The frequency of this note
-	private final double hertz;
-
-	/**
-	 * @return The name of this note.
-	 */
-	public String getName() {
-		return name;
-	}
-
-	/**
-	 * @return The frequency of this note in hertz.
-	 */
-	public double getFrequency() {
-		return hertz;
-	}
+	public final double hertz;
 
 	/**             Creates a note.
 	 * @param name  The name of the note.

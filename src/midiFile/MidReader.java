@@ -489,7 +489,7 @@ public class MidReader {
 		int velocity = midFileStream.read();
 		lengthToAdd+=2;
 		System.out.print("Note ");
-		System.out.print(note.getName());
+		System.out.print(note.name);
 		System.out.print(" with velocity ");
 		System.out.print(velocity);
 		System.out.println(" was turned on");
@@ -504,7 +504,7 @@ public class MidReader {
 		int velocity = midFileStream.read();
 		lengthToAdd+=2;
 		System.out.print("Note ");
-		System.out.print(note.getName());
+		System.out.print(note.name);
 		System.out.print(" was turned off");
 		System.out.print(" with velocity ");
 		System.out.println(velocity);

@@ -58,7 +58,7 @@ public final class MidEventNoteOff extends MidChannelVoiceEvent {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		baos.write(0x80 | ((byte)channel));
 		byte keyNumber;
-		int i = scale.getIndexForFrequency(note.getFrequency());
+		int i = scale.getIndexForFrequency(note.hertz);
 		int mci = scale.middleCIndex;
 		int dif = 0x3C - mci;
 		keyNumber = (byte) (dif+i);

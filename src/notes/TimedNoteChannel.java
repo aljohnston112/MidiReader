@@ -14,7 +14,7 @@ import rhythm.Tempo;
  */
 public class TimedNoteChannel {
 
-	private List<ArrayList<TimedNote>> noteArray = new ArrayList<ArrayList<TimedNote>>();
+	public List<ArrayList<TimedNote>> noteArray = new ArrayList<ArrayList<TimedNote>>();
 
 	/**             Adds a track to this TimedNoteChannel.
 	 * @param track The track to add to this TimedNoteChannel.

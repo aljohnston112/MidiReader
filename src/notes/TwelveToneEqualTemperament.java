@@ -35,7 +35,7 @@ public final class TwelveToneEqualTemperament extends EqualTemperament {
 		ArrayList<Note> newNotes = new ArrayList<>();
 		String[] names  = {"A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"};
 		for(int j = 0; j < notes.size(); j++) {
-			newNotes.add(new Note(names[j%12], notes.get(j).getFrequency()));
+			newNotes.add(new Note(names[j%12], notes.get(j).hertz));
 		}
 		this.notes.clear();
 		for(Note n : newNotes) {

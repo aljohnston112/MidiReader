@@ -23,14 +23,14 @@ public abstract class Scale {
 	 */
 	public int getIndexForFrequency(double frequency) {
 		int i = 0;
-		while(i < notes.size() && notes.get(i).getFrequency() < frequency) {
+		while(i < notes.size() && notes.get(i).hertz < frequency) {
 			i++;
 		}
 		if(i == 0) {
 			return 0;
 		}
-		double dif1 = Math.abs(notes.get(i).getFrequency() - frequency);
-		double dif2 = Math.abs(notes.get(i-1).getFrequency() - frequency);
+		double dif1 = Math.abs(notes.get(i).hertz) - frequency;
+		double dif2 = Math.abs(notes.get(i-1).hertz) - frequency;
 		if(dif1 < dif2) {
 			return i;
 		} else {
