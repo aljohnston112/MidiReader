@@ -236,7 +236,7 @@ public class MidReader {
 		TimedNoteChannel b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
 		b.quantize(tempo.thirtySecondNoteInSeconds, new Dynamics(127));
 		b.homogenize();
-		b.condense();
+		b.condense(tempo.thirtySecondNoteInSeconds);
 		System.out.println("File has been built");
 		return mf;
 	}

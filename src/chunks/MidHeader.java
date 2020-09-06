@@ -36,7 +36,7 @@ public final class MidHeader extends MidChunk {
 	 * @param length      The length of the header in bytes.
 	 * 
 	 * @throws NullPointerException     If format is null.
-	 * @throws IllegalArgumentException If nTracks or ticksPer are note at least 1, or frameRate is not 24, 25, or 30.
+	 * @throws IllegalArgumentException If nTracks or ticksPer are note at least 1, or frameRate is not 24, 25, 30, -1 (for no frame rate).
 	 */
 	public MidHeader(Format format, int nTracks, boolean isDropFrame, 
 			boolean isSeconds, int ticksPer, int frameRate, long length) {
@@ -48,7 +48,7 @@ public final class MidHeader extends MidChunk {
 		if(ticksPer < 1) {
 			throw new IllegalArgumentException("int ticksPer passed to MidHeader constructor must be at least 1");			
 		}
-		if(frameRate != 24 && frameRate != 25 && frameRate != 30) {
+		if(frameRate != -1 && frameRate != 24 && frameRate != 25 && frameRate != 30) {
 			throw new IllegalArgumentException("int frameRate passed to MidHeader constructor must be 24, 25, or 30");			
 		}
 		this.format = format;

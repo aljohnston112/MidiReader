@@ -83,10 +83,11 @@ public class TimedNoteChannel {
 		}
 	}
 
-	/** Condenses the tracks in this channel by replacing as much silence in the lower index tracks 
-	 *  with notes from the higher index tracks.
+	/**               Condenses the tracks in this channel by replacing as much silence in the lower index tracks 
+	 *                with notes from the higher index tracks.
+	 * @param overlap The amount of overlap in seconds between the end and start of two notes that can be combined.
 	 */
-	public void condense() {
+	public void condense(double overlap) {
 		boolean changed = true;
 		boolean tempChanged = false;
 		while(changed) {
@@ -94,14 +95,14 @@ public class TimedNoteChannel {
 			if(noteArray.size() > 1) {
 				ArrayList<TimedNote> trackToSearchForSilence = noteArray.get(0);
 				ArrayList<TimedNote> trackToSearchForSilenceReplacment = noteArray.get(1);	
-				tempChanged = condense(trackToSearchForSilence, trackToSearchForSilenceReplacment);
+				tempChanged = condense(trackToSearchForSilence, trackToSearchForSilenceReplacment, overlap);
 				if(tempChanged) {
 					changed = true;
 				}
 				for(int i = 2; i < noteArray.size(); i++) {
 					trackToSearchForSilence = trackToSearchForSilenceReplacment;
 					trackToSearchForSilenceReplacment = noteArray.get(i);
-					tempChanged = condense(trackToSearchForSilence, trackToSearchForSilenceReplacment);
+					tempChanged = condense(trackToSearchForSilence, trackToSearchForSilenceReplacment, overlap);
 					if(tempChanged) {
 						changed = true;
 					}
@@ -119,7 +120,7 @@ public class TimedNoteChannel {
 	 *                            
 	 * @throws NullPointerException If searchForSilence or silenceReplacement are null.
 	 */
-	private boolean condense(ArrayList<TimedNote> searchForSilence, ArrayList<TimedNote> silenceReplacement) {
+	private boolean condense(ArrayList<TimedNote> searchForSilence, ArrayList<TimedNote> silenceReplacement, double error) {
 		Objects.requireNonNull(searchForSilence);
 		Objects.requireNonNull(silenceReplacement);
 		boolean changed = false;
@@ -131,7 +132,6 @@ public class TimedNoteChannel {
 		double replacementStartTime = 0;
 		double silenceTime = 0;
 		double replacementTime = 0;
-		double error = 0.01;
 		// Find blank space
 		int i = 0;
 		while(silenceStartIndex == -1 && i < searchForSilence.size()) {
@@ -220,6 +220,29 @@ public class TimedNoteChannel {
 				if(track.get(j).time == 0) {
 					track.remove(j);
 				}
+			}
+		}
+		
+		silenceStartTime = 0;
+		for(TimedNote tn : searchForSilence) {
+			silenceStartTime+=tn.time;
+		}
+		replacementStartTime = 0;
+		i = 0;
+		while(replacementStartTime < silenceStartTime && i < silenceReplacement.size()) {
+			replacementStartTime+=silenceReplacement.get(i).time;
+			i++;
+		}
+		bnt = replacementStartTime-silenceStartTime;
+		if(bnt > 0) {
+			searchForSilence.add(new TimedNote(new Note("", 1), bnt, 0));
+			changed = true;
+		}
+		if(bnt >= 0) {
+			replacementStartIndex = i;
+			for(int j = replacementStartIndex; j < silenceReplacement.size(); j++) {
+				searchForSilence.add(silenceReplacement.get(j));
+				silenceReplacement.remove(j);
 			}
 		}
 		return changed;
