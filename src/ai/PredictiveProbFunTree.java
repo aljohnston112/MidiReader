@@ -39,6 +39,10 @@ public class PredictiveProbFunTree<T> {
 
 	// The max amount of layers to be contained in the ProbFunTree
 	int maxLayer = -1;
+	
+	public T fun() {
+		return pft.fun();
+	}
 
 	/**        Creates a probability tree from data and can be used to predict the elements in the future.
 	 *         If data is large, computation time may take a long time and memory could run out.

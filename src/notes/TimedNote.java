@@ -65,13 +65,16 @@ public final class TimedNote implements Comparable<TimedNote> {
 		StringBuilder sb = new StringBuilder();
 		sb.append("TN: ");
 		sb.append(String.format(note.name));
+		if(note.name.equals("")) {
+			sb.append("N/A");
+		}
 		sb.append(", ");
 		sb.append(String.format("%.2f", note.hertz));
 		sb.append("hz, ");
 		sb.append(String.format("%.2f", time));
 		sb.append("s, ");
-		sb.append(String.format("%.2f", velocity));
-		sb.append("/127");
+		sb.append(String.format("%.0f", velocity));
+		sb.append("/127\n");
 		return sb.toString();
 	}
 	

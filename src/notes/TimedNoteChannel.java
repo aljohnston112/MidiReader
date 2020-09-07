@@ -218,8 +218,9 @@ public class TimedNoteChannel {
 			ArrayList<TimedNote> track = noteArray.get(k);
 			boolean keepTrack = false;
 			for(int j = 0; j < track.size(); j++) {
-				if(track.get(j).time == 0) {
+				if(track.get(j).time < overlap) {
 					track.remove(j);
+					j--;
 				}
 				if(track.get(j).velocity != 0) {
 					keepTrack = true;
@@ -227,6 +228,7 @@ public class TimedNoteChannel {
 			}
 			if(!keepTrack) {
 				noteArray.remove(k);
+				k--;
 			}
 		}
 		// Append extra notes from replacement track to silence track
@@ -250,6 +252,15 @@ public class TimedNoteChannel {
 			searchForSilence.add(silenceReplacement.get(j));
 			silenceReplacement.add(j, new TimedNote(new Note("", 1.0), silenceReplacement.get(j).time, 0));
 			silenceReplacement.remove(j+1);
+		}
+		// Delete silence at the end
+		for(int k = 0; k < noteArray.size(); k++) {
+			ArrayList<TimedNote> track = noteArray.get(k);
+			int j = track.size()-1;
+			while(track.get(j).time < overlap) {
+				track.remove(j);
+				j--;
+			}
 		}
 		return changed;
 	}

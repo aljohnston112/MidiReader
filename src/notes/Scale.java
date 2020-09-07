@@ -29,8 +29,8 @@ public abstract class Scale {
 		if(i == 0) {
 			return 0;
 		}
-		double dif1 = Math.abs(notes.get(i).hertz) - frequency;
-		double dif2 = Math.abs(notes.get(i-1).hertz) - frequency;
+		double dif1 = Math.abs(notes.get(i).hertz - frequency);
+		double dif2 = Math.abs(notes.get(i-1).hertz - frequency);
 		if(dif1 < dif2) {
 			return i;
 		} else {

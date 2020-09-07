@@ -1000,46 +1000,45 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 	 */
 	public T fun() {
 		ArrayList<T> previousElements = new ArrayList<T>();
-		if(this.previousElement == null) {
-			return nextValue();
-		} else if(!this.children.isEmpty()) {
-			previousElements.add(previousElement);
-			ProbFunTree<T> pf = this.children.get(this.previousElement);
-			T t = pf.previousElement;
-			if(t == null && pf != null) {
-				return pf.nextValue();
-			} else if(t == null) {
-				return this.nextValue();
-			}
-			while(t != null) {
-				previousElements.add(t);
-				if(!pf.children.isEmpty()) {
-					pf = pf.children.get(t);
-					t = pf.previousElement;
-				} else {
-					t = null;
-				}
-			}
-			Iterator<T> it = previousElements.iterator();
-			if(it.hasNext()) {
-				this.previousElement = it.next();
-				pf = this.children.get(this.previousElement);
-				while(it.hasNext()) {
-					pf.previousElement = it.next();
-					pf = pf.children.get(pf.previousElement);
-				}
-				if(pf == null) {
-					clearHistory();
-					this.previousElement = previousElements.get(previousElements.size()-1);
-					return this.nextValue();
-				}
-				return pf.fun();
-			} else {
-				return this.children.get(this.previousElement).fun();
-			}
-		} else {
+		if(this.previousElement == null || this.children.isEmpty()) {
 			return nextValue();
 		}
+		previousElements.add(previousElement);
+		ProbFunTree<T> pf = this.children.get(this.previousElement);
+		if(pf == null) {
+			return null;
+		}
+		T t = pf.previousElement;
+		if(t == null && pf != null) {
+			return pf.nextValue();
+		} 
+		while(t != null) {
+			previousElements.add(t);
+			if(!pf.children.isEmpty()) {
+				pf = pf.children.get(t);
+				if(pf != null) {
+					t = pf.previousElement;
+				} else {
+					return null;
+				}
+			} else {
+				return null;
+			}
+		}
+		Iterator<T> it = previousElements.iterator();
+		if(it.hasNext()) {
+			this.previousElement = it.next();
+			pf = this.children.get(this.previousElement);
+			while(it.hasNext()) {
+				pf.previousElement = it.next();
+				pf = pf.children.get(pf.previousElement);
+			}
+			if(pf == null) {
+				return null;
+			}
+			return pf.fun();
+		} 
+		return null;
 	}
 
 	/**        For generating the next value.

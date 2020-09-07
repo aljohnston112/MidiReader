@@ -15,6 +15,7 @@ import java.util.Optional;
 import javax.activation.UnsupportedDataTypeException;
 
 import ai.MarkovChain;
+import ai.PredictiveProbFunTree;
 import channelVoiceMessages.MidEventNoteOff;
 import channelVoiceMessages.MidEventNoteOn;
 import channelVoiceMessages.MidEventPitchBend;
@@ -44,6 +45,7 @@ import midFileBuilder.MidHeaderBuilder;
 import midFileBuilder.MidTrackBuilder;
 import midFileBuilder.MidHeaderBuilder.Format;
 import notes.Note;
+import notes.TimedNote;
 import notes.TimedNoteChannel;
 import notes.TwelveToneEqualTemperament;
 import rhythm.Tempo;
@@ -149,7 +151,7 @@ public class MidReader {
 		return midFiles;
 	}
 
-	private static MidFile readMidFile(BufferedInputStream midFileStream) throws IOException {
+	public static MidFile readMidFile(BufferedInputStream midFileStream) throws IOException {
 		MidFileBuilder midBuilder = new MidFileBuilder();
 		while(midFileStream.available() > 0) {
 			MidChunkBuilder chunkBuilder = getChunk(midFileStream).orElse(null);
@@ -234,11 +236,6 @@ public class MidReader {
 			midBuilder.setN32ndNotesPer24Clocks(n32ndNotesPer24Clocks);			
 		}
 		MidFile mf = midBuilder.build();
-		TimedNoteChannel b = mf.tracks.get(1).getTrack(mf.getTicksPerSecond());
-		b.quantize(tempo.thirtySecondNoteInSeconds, new Dynamics(127));
-		b.homogenize();
-		b.condense(tempo.thirtySecondNoteInSeconds);
-		MarkovChain mc = new MarkovChain(b.noteArray.get(0));
 		System.out.println("File has been built");
 		return mf;
 	}

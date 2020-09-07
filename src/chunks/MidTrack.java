@@ -155,8 +155,8 @@ public class MidTrack extends MidChunk {
 			}
 
 		}
-		for(int channel = 0; channel < channelToTimedNotes.size(); channel++) {
-			for(ArrayList<TimedNote> a : channelToTimedNotes.get(channel)) {
+		for(Entry<Integer, ArrayList<ArrayList<TimedNote>>> t : channelToTimedNotes.entrySet()) {
+			for(ArrayList<TimedNote> a : t.getValue()) {
 				notesOut.addTrack(a);
 			}
 		}

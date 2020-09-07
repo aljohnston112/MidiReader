@@ -38,11 +38,11 @@ public final class Note implements Comparable<Note> {
 
 	@Override
 	public int compareTo(Note o) {
-		int h = Double.compare(hertz, o.hertz);
+		int h = name.compareTo(o.name);
 		if(h != 0) {
 			return h;
 		}
-		h = name.compareTo(o.name);
+		h = Double.compare(hertz, o.hertz);
 		return h;
 	}
 

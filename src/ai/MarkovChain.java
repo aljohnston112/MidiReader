@@ -11,16 +11,32 @@ public class MarkovChain<T> {
 
 	ProbFunTree<T> choices;
 
-	Map<T, HashMap<T, Integer>> count = new HashMap<>();
+	T first;
 
-	T lastT;
+	T lastT = null;
 
-	T currentT;
+	T currentT = null;
+
+	public T fun() {
+		if(currentT == null) {
+			currentT = first;
+			return first;
+		}
+		lastT = currentT;
+		if(chain.get(lastT) != null) {
+			currentT = chain.get(lastT).fun();
+			return currentT;
+		} else {
+			return null;
+		}
+	}
 
 	public MarkovChain(List<T> seq) {
 		if(seq.size() < 2 ) {
 			throw new IllegalArgumentException("List seq passed to MarkovChain must have at least two elements");
 		}
+		Map<T, HashMap<T, Integer>> count = new HashMap<>();
+		this.first = seq.get(0);
 		HashSet<T> first = new HashSet<T>();
 		first.add(seq.get(0));
 		choices = new ProbFunTree<>(first, 1);
@@ -62,9 +78,8 @@ public class MarkovChain<T> {
 				}
 			}
 		}
-		System.out.print(true);
 	}
-	
-	
+
+
 
 }
