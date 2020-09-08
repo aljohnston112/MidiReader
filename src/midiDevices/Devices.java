@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,18 @@ import rhythm.Tempo;
 public class Devices {
 
 	public static void main(String[] args) {
+		File file = new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\out.txt");
+		file.delete();
+		PrintStream stream = null;
+		try {
+			stream = new PrintStream(file);
+		} catch (FileNotFoundException e) {
+			System.out.println("Problem redirecting system out to file");
+		}
+		if(stream != null) {
+			System.setOut(stream);
+		}
+		
 		List<MidFile> mfs = MidReader.read(new File("C:\\Users\\aljoh\\Downloads\\Undertale MIDI\\Undertale MIDI\\0\\"));
 		MidFile mf = mfs.get(0);
 		Tempo tempo = mf.tempo;

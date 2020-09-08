@@ -49,6 +49,8 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 	// The rounding error to prevent over and under flow
 	private double roundingError = 0;
 
+	private boolean wasPruned = false;
+
 	private int modCount = 0;
 
 	public int getModCount() {
@@ -760,10 +762,136 @@ public class ProbFunTree<T> implements Serializable, Comparable<T> {
 				return;
 			}
 		}
-		if(prevPFT != null && !it.hasNext()) {
+		if(pft != null && prevPFT != null && !it.hasNext()) {
 			Set<T> s = new HashSet<>();
 			s.add(elementToAppend);
 			prevPFT.add(t, s);
+		}
+	}
+
+	/**        Removes elementToRemove from the node at the end of traversing nodePath. 
+	 *         If nodePath is not part of this tree, elementToRemove will not be removed.
+	 * @param  nodePath as the List of Objects in the order to look for in this ProbFunTree.
+	 * @param  elementToRemove as the element toremove from the child node
+	 *         under the node containing the last element in nodePath.
+	 * @throws NullPointerException if nodePath or elementToAdd are null.
+	 * @throws IllegalArgumentException if nodePath is empty.
+	 */
+	public void removeFromNodePath(List<T> nodePath, T elementToRemove) {
+		Objects.requireNonNull(nodePath);
+		Objects.requireNonNull(elementToRemove);
+		if(nodePath.isEmpty()) {
+			throw new IllegalArgumentException("Must have at least one entry in nodePath passed to removeFromNodePath()");
+		}
+		// Invariants secured
+		if(nodePath.size() == 1 && this.probMap.containsKey(nodePath.get(0))) {
+			children.remove(elementToRemove);
+			return;
+		}
+		Iterator<T> it = nodePath.iterator();
+		T t = it.next();
+		ProbFunTree<T> pft = this.children.get(t);
+		ProbFunTree<T> prevPFT = null;
+		while(it.hasNext() && pft != null) {
+			t = it.next();
+			prevPFT = pft;
+			pft = pft.children.get(t);
+			if(!it.hasNext() && pft == null && prevPFT.probMap.containsKey(t)) {
+				prevPFT.remove(elementToRemove);
+				return;
+			}
+		}
+		if(prevPFT != null && !it.hasNext()) {
+			if(prevPFT.probMap.size() == 1) {
+				Set<T> st = prevPFT.probMap.keySet();
+				Iterator<T> itst = st.iterator();
+				prevPFT.children.remove(itst.next());
+			} else {
+				prevPFT.remove(elementToRemove);
+			}
+		}
+	}
+
+	/**        Removes remove if the last element in nodePath is a leafNode from all branches in this ProbFunTree. 
+	 *         If nodePath is not part of this tree, nothing will be removed.
+	 * @param  nodePath as the List of Objects in the order to look for in this ProbFunTree.
+	 * @param  remove as the element to remove if the last node from nodePath is a leaf node.
+	 * @throws NullPointerException if nodePath or remove are null.
+	 * @throws IllegalArgumentException if nodePath is empty.
+	 */
+	public void removeLeafNodesFromAll(List<T> nodePath, T remove) {
+		Objects.requireNonNull(remove);
+		Objects.requireNonNull(nodePath);
+		if(nodePath.isEmpty()) {
+			throw new IllegalArgumentException("Must have at least one entry in nodePath passed to removeLeafNodesFromAll()");
+		}
+		// Invariants secured
+		removeLeafNodesFromAllHelper(nodePath, remove);
+		untagParents();
+	}
+
+	private void untagParents() {
+		for(ProbFunTree<T> t : children.values()) {
+			t.untagParents();
+		}		
+		this.wasPruned = false;
+	}
+
+	private void removeLeafNodesFromAllHelper(List<T> nodePath, T remove) {
+		for(ProbFunTree<T> t : children.values()) {
+			t.removeLeafNodesFromAll(nodePath, remove);
+		}		
+		if(!wasPruned) {
+			removeLeafNodes(nodePath, remove);
+		}
+	}
+
+	/**        Removes remove if the last element in nodePath is a leafNode. 
+	 *         If nodePath is not part of this tree, nothing will be removed.
+	 * @param  nodePath as the List of Objects in the order to look for in this ProbFunTree.
+	 * @param  remove as the element to remove if the last node from nodePath is a leaf node.
+	 * @throws NullPointerException if nodePath or remove are null.
+	 * @throws IllegalArgumentException if nodePath is empty.
+	 */
+	public void removeLeafNodes(List<T> nodePath, T remove) {
+		Objects.requireNonNull(remove);
+		Objects.requireNonNull(nodePath);
+		if(nodePath.isEmpty()) {
+			throw new IllegalArgumentException("Must have at least one entry in nodePath passed to removeLeafNodes()");
+		}
+		// Invariants secured
+		if(nodePath.size() == 1 && this.probMap.containsKey(nodePath.get(0)) && 
+				this.children.containsKey(remove) && this.children.get(remove).children.isEmpty()) {
+			this.children.remove(remove);
+			ProbFunTree<T> parent = this.parent;
+			this.wasPruned = true;
+			int k = 0;
+			while(parent != null && k < nodePath.size()) {
+				parent.wasPruned = true;
+				parent = parent.parent;
+				k++;
+			}
+			return;
+		}
+		Iterator<T> it = nodePath.iterator();
+		T t = it.next();
+		ProbFunTree<T> pft = this.children.get(t);
+		ProbFunTree<T> prevPFT = null;
+		while(it.hasNext() && pft != null) {
+			t = it.next();
+			prevPFT = pft;
+			pft = pft.children.get(t);
+		}
+		if(pft != null && prevPFT != null && !it.hasNext() && pft.children.isEmpty()) {
+			prevPFT.children.remove(remove);
+			ProbFunTree<T> parent = this.parent;
+			this.wasPruned = true;
+			int k = 0;
+			while(parent != null && k < nodePath.size()) {
+				parent.wasPruned = true;
+				parent = parent.parent;
+				k++;
+			}
 		}
 	}
 

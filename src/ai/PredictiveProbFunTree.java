@@ -1,5 +1,6 @@
 package ai;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,7 +40,7 @@ public class PredictiveProbFunTree<T> {
 
 	// The max amount of layers to be contained in the ProbFunTree
 	int maxLayer = -1;
-	
+
 	public T fun() {
 		return pft.fun();
 	}
@@ -119,7 +120,19 @@ public class PredictiveProbFunTree<T> {
 				List<T> ifPresent = ll.subList(0, ll.size()-1);
 				T append = ll.get(ll.size()-1);
 				if(this.maxLayer == -1) {
-					pft.appendToNodePathToAll(ifPresent, append);
+					boolean same = true;
+					for(T t: ifPresent) {
+						if(!t.equals(append)) {
+							same = false;
+						}
+					}
+					if(same) {
+						pft.appendToNodePathToAll(ifPresent, append);	
+						pft.removeLeafNodesFromAll(ifPresent, append);
+					} else {
+						pft.appendToNodePathToAll(ifPresent, append);
+						pft.removeFromNodePath(currentSubSequences.get(0), append);
+					}
 				} else {
 					pft.appendToNodePathToAll(ifPresent, append, this.maxLayer);
 				}
